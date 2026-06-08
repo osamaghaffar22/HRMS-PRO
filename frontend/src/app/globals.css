@@ -1,0 +1,138 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: 'Cambria', 'Georgia', serif;
+  
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  
+  --radius-sm: 0.4rem;
+  --radius-md: 0.6rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+}
+
+:root {
+  /* Modern Fresh & Light Palette - True Purple */
+  --background: oklch(0.98 0.005 280); 
+  --foreground: oklch(0.2 0.05 280);
+  
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2 0.05 280);
+  
+  --primary: oklch(0.55 0.25 295); /* Vibrant True Purple */
+  --primary-foreground: oklch(1 0 0);
+  
+  --secondary: oklch(0.92 0.08 295); /* Distinct Light Purple (clearly purple, not white) */
+  --secondary-foreground: oklch(0.55 0.25 295);
+  
+  --muted: oklch(0.97 0.01 280);
+  --muted-foreground: oklch(0.5 0.05 280);
+  
+  --accent: oklch(0.94 0.04 295);
+  --accent-foreground: oklch(0.55 0.25 295);
+  
+  --success: oklch(0.7 0.18 160); /* Fresh Green */
+  --warning: oklch(0.8 0.18 85);  /* Fresh Amber */
+  --danger: oklch(0.65 0.22 25);  /* Fresh Red */
+  
+  --border: oklch(0.92 0.02 280);
+  --input: oklch(0.92 0.02 280);
+  --ring: oklch(0.55 0.25 295);
+  
+  --radius: 1.25rem;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+    cursor: default; /* Global arrow cursor */
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04";
+    user-select: none; /* Prevent accidental text selection */
+  }
+  input, textarea, [contenteditable="true"] {
+    cursor: text !important; /* Allow typing cursor in fields */
+    user-select: text !important;
+  }
+  a, button, [role="button"], .cursor-pointer {
+    cursor: pointer !important; /* Keep hand cursor for links/buttons */
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply tracking-tight font-semibold text-slate-900;
+  }
+}
+
+.corporate-card {
+  @apply bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden transition-all duration-200 hover:shadow-md;
+}
+
+.data-table-header {
+  @apply bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px] tracking-wider;
+}
+
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 0.3in;
+  }
+  body * {
+    visibility: hidden;
+  }
+  .print-area, .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+  .print-area table {
+    border-collapse: collapse;
+    width: 100%;
+    font-family: 'Arial', sans-serif;
+    font-size: 8pt;
+    border: 1.5pt solid black;
+  }
+  .print-area th, .print-area td {
+    border: 1pt solid black !important;
+    padding: 6pt;
+    text-align: left;
+    background-color: transparent !important;
+    color: black !important;
+  }
+  .print-area th {
+    font-weight: bold;
+    text-transform: uppercase;
+  }
+  .print-header {
+    text-align: center;
+    margin-bottom: 20pt;
+    font-family: 'Arial', sans-serif;
+  }
+  .print-header h1 {
+    font-size: 14pt;
+    font-weight: bold;
+    text-transform: uppercase;
+    text-decoration: underline;
+    margin-bottom: 5pt;
+  }
+  .print-header p {
+    font-size: 10pt;
+    font-weight: bold;
+  }
+  .no-print {
+    display: none !important;
+  }
+}
