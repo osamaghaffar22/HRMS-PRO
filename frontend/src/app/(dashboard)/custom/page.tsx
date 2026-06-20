@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { 
@@ -27,8 +27,100 @@ import {
   User, 
   X,
   History,
-  CheckCircle2
+  CheckCircle2,
+  ChevronDown,
+  Filter,
+  RotateCcw,
+  Edit2,
+  Download,
+  Printer,
+  FileText,
+  ArrowLeft
 } from 'lucide-react';
+import { MultiSelect } from '@/components/ui/multi-select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+
+const columnGroups = [
+  {
+    id: 'personal',
+    title: 'Personal Details',
+    columns: [
+      { id: 'name', label: 'Name' },
+      { id: 'father_name', label: 'Father Name' },
+      { id: 'dob', label: 'Date of Birth' },
+      { id: 'cnic', label: 'CNIC' },
+      { id: 'gender', label: 'Gender' },
+      { id: 'religion', label: 'Religion' },
+      { id: 'marital_status', label: 'Marital Status' },
+      { id: 'blood_group', label: 'Blood Group' },
+      { id: 'domicile', label: 'Domicile' },
+      { id: 'home_province', label: 'Home Province' },
+      { id: 'home_district', label: 'Home District' },
+      { id: 'rural_urban', label: 'Rural/Urban' },
+      { id: 'nationality', label: 'Nationality' },
+      { id: 'dual_nationality', label: 'Dual Nationality' },
+      { id: 'passport_noc', label: 'Passport NOC' },
+      { id: 'disability', label: 'Disability' },
+      { id: 'email', label: 'Email' },
+      { id: 'mobile_no', label: 'Mobile No' },
+      { id: 'temp_address', label: 'Temp Address' },
+      { id: 'perm_address', label: 'Perm Address' },
+      { id: 'total_age', label: 'Total Age' },
+      { id: 'youth_adult', label: 'Youth/Adult' }
+    ]
+  },
+  {
+    id: 'official',
+    title: 'Official Details',
+    columns: [
+      { id: 'personal_file_no', label: 'Personal File No' },
+      { id: 'employee_no', label: 'Employee No' },
+      { id: 's_no', label: 'S.No' },
+      { id: 'code', label: 'Code' },
+      { id: 'seniority_no', label: 'Seniority No' },
+      { id: 'officer_official', label: 'Officer/Official' },
+      { id: 'hq_field', label: 'HQ/Field' },
+      { id: 'head_office', label: 'Head Office' },
+      { id: 'wing_division', label: 'Wing/Division' },
+      { id: 'section_district', label: 'Section/District' },
+      { id: 'branch_office', label: 'Branch/Office' },
+      { id: 'place_of_posting', label: 'Place of Posting' },
+      { id: 'bs', label: 'BPS / Grade' },
+      { id: 'post_name', label: 'Post Name / Designation' },
+      { id: 'post_status', label: 'Post Status' },
+      { id: 'cadre_type', label: 'Cadre Type' },
+      { id: 'job_type', label: 'Job Type' }
+    ]
+  },
+  {
+    id: 'qualification',
+    title: 'Qualification & Experience',
+    columns: [
+      { id: 'qualification', label: 'Qualification' },
+      { id: 'area_expertise', label: 'Area of Expertise' }
+    ]
+  },
+  {
+    id: 'service',
+    title: 'Service History',
+    columns: [
+      { id: 'direct_promotion', label: 'Direct/Promotion' },
+      { id: 'entry_govt', label: 'Entry in Govt' },
+      { id: 'joining_date', label: 'Joining Date' },
+      { id: 'joining_present_post', label: 'Joining Present Post' },
+      { id: 'total_service', label: 'Total Service' },
+      { id: 'tenure_current_station', label: 'Tenure (Current Station)' },
+      { id: 'tenure_current_scale', label: 'Tenure (Current Scale)' },
+      { id: 'probation_status', label: 'Probation Status' },
+      { id: 'probation_till_date', label: 'Probation Till Date' }
+    ]
+  }
+];
+
+const availableColumns = columnGroups.flatMap(g => g.columns);
 
 export default function CustomModulesPage() {
   const queryClient = useQueryClient();
@@ -39,13 +131,17 @@ export default function CustomModulesPage() {
 
   // New Module Creation State
   const [newModuleName, setNewModuleName] = useState('');
+  const [selectedBaseColsLabels, setSelectedBaseColsLabels] = useState<string[]>([]);
   const [newModuleCols, setNewModuleCols] = useState<string[]>([]);
   const [currentColInput, setCurrentColInput] = useState('');
 
+  // Registry List Filters
+  const [activeFilters, setActiveFilters] = useState<Record<string, string[]>>({});
+
   // Data Entry State
-  const [empSearch, setEmpSearch] = useState('');
-  const [selectedEmp, setSelectedEmp] = useState<any>(null);
-  const [customData, setCustomData] = useState<any>({});
+  const [editingEmp, setEditingEmp] = useState<any>(null);
+  const [editingData, setEditingData] = useState<any>({});
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Queries
   const { data: modules, isLoading: modulesLoading } = useQuery({
@@ -56,14 +152,13 @@ export default function CustomModulesPage() {
     }
   });
 
-  const { data: employees } = useQuery({
-    queryKey: ['employees-search-custom', empSearch],
+  const { data: allEmployees, isLoading: allEmpLoading } = useQuery({
+    queryKey: ['employees-all-custom'],
     queryFn: async () => {
-      if (!empSearch || empSearch.length < 2) return [];
-      const res = await api.get(`/api/employees?search=${empSearch}`);
+      const res = await api.get('/api/employees');
       return res.data;
     },
-    enabled: empSearch.length >= 2
+    enabled: !!activeModule
   });
 
   const { data: moduleData, isLoading: dataLoading } = useQuery({
@@ -76,6 +171,96 @@ export default function CustomModulesPage() {
     enabled: !!activeModule
   });
 
+  const mergedData = useMemo(() => {
+    if (!allEmployees || !activeModule) return [];
+    
+    const customDataMap: Record<number, any> = {};
+    if (moduleData) {
+      moduleData.forEach((d: any) => {
+         customDataMap[d.employee_id] = d.data || {};
+      });
+    }
+
+    let result = allEmployees.map((emp: any) => ({
+      ...emp,
+      customData: customDataMap[emp.id] || {}
+    }));
+
+    Object.entries(activeFilters).forEach(([key, values]) => {
+      if (values.length > 0) {
+        result = result.filter((emp: any) => {
+          const isCustom = activeModule.columns?.custom?.includes(key);
+          const val = isCustom ? emp.customData[key] : emp[key];
+          return values.includes(String(val || ''));
+        });
+      }
+    });
+
+    if (searchTerm) {
+        const lowerSearch = searchTerm.toLowerCase();
+        result = result.filter((emp: any) => 
+            emp.name?.toLowerCase().includes(lowerSearch) || 
+            emp.post_name?.toLowerCase().includes(lowerSearch)
+        );
+    }
+
+    return result;
+  }, [allEmployees, moduleData, activeFilters, activeModule, searchTerm]);
+
+  const handleFilterChange = (id: string, values: string[]) => {
+    setActiveFilters(prev => ({ ...prev, [id]: values }));
+  };
+
+  const getUniqueOptions = (colId: string, isCustom: boolean): string[] => {
+    if (!allEmployees || !activeModule) return [];
+    
+    const customDataMap: Record<number, any> = {};
+    if (moduleData) {
+      moduleData.forEach((d: any) => { customDataMap[d.employee_id] = d.data || {}; });
+    }
+
+    const values = allEmployees.map((emp: any) => {
+        const val = isCustom ? customDataMap[emp.id]?.[colId] : emp[colId];
+        return String(val || '');
+    }).filter(Boolean);
+    return Array.from(new Set(values)).sort() as string[];
+  };
+
+  const getLabel = (id: string) => availableColumns.find(c => c.id === id)?.label || id;
+
+  const exportData = (type: 'excel' | 'pdf' | 'print') => {
+      if (type === 'print') { window.print(); return; }
+      
+      const cols = [
+          ...(activeModule?.columns?.base || []).map((c: string) => ({ id: c, label: getLabel(c), isCustom: false })),
+          ...(activeModule?.columns?.custom || []).map((c: string) => ({ id: c, label: c, isCustom: true }))
+      ];
+
+      if (type === 'excel') {
+          const wsData = mergedData.map((emp: any) => {
+              const row: any = {};
+              cols.forEach(c => {
+                  row[c.label] = c.isCustom ? emp.customData[c.id] : emp[c.id];
+              });
+              return row;
+          });
+          const ws = XLSX.utils.json_to_sheet(wsData);
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, "Registry");
+          XLSX.writeFile(wb, `${activeModule.title}_Registry.xlsx`);
+      } else if (type === 'pdf') {
+          const doc = new jsPDF('landscape');
+          doc.text(`${activeModule.title} Registry`, 14, 15);
+          const head = [['#', ...cols.map(c => c.label)]];
+          const body = mergedData.map((emp: any, idx: number) => [
+              idx + 1,
+              ...cols.map(c => c.isCustom ? emp.customData[c.id] : emp[c.id])
+          ]);
+          autoTable(doc, { startY: 20, head, body, styles: { fontSize: 8 } });
+          doc.save(`${activeModule.title}_Registry.pdf`);
+      }
+  };
+
   // Mutations
   const createModuleMutation = useMutation({
     mutationFn: (data: any) => api.post('/api/custom-modules/', data),
@@ -83,6 +268,7 @@ export default function CustomModulesPage() {
       queryClient.invalidateQueries({ queryKey: ['custom-modules'] });
       setNewModuleName('');
       setNewModuleCols([]);
+      setSelectedBaseColsLabels([]);
       setShowModuleConfig(false);
     }
   });
@@ -91,9 +277,6 @@ export default function CustomModulesPage() {
     mutationFn: (data: any) => api.post(`/api/custom-modules/${activeModule.id}/data`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['custom-data', activeModule.id] });
-      setSelectedEmp(null);
-      setCustomData({});
-      setEmpSearch('');
     }
   });
 
@@ -138,6 +321,7 @@ export default function CustomModulesPage() {
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
         {/* Navigation Sidebar */}
+        {!activeModule && (
         <Card className="xl:col-span-3 border-none shadow-2xl bg-white rounded-3xl overflow-hidden border border-slate-100 min-h-[400px]">
           <CardHeader className="bg-slate-900 text-white p-6">
             <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] flex items-center italic">
@@ -159,17 +343,20 @@ export default function CustomModulesPage() {
                 onClick={() => setActiveModule(m)}
               >
                 <div>
-                    <p className={cn("font-black uppercase text-xs tracking-tight", activeModule?.id === m.id ? "text-primary" : "text-slate-700")}>{m.name}</p>
-                    <p className="text-[8px] font-bold text-slate-400 mt-1 uppercase tracking-widest">{m.columns.length} Defined Segments</p>
+                    <p className={cn("font-black uppercase text-xs tracking-tight", activeModule?.id === m.id ? "text-primary" : "text-slate-700")}>{m.title}</p>
+                    <p className="text-[8px] font-bold text-slate-400 mt-1 uppercase tracking-widest">
+                        {m.columns?.base?.length || 0} Base | {m.columns?.custom?.length || 0} Custom Segments
+                    </p>
                 </div>
                 <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 h-8 w-8 text-rose-300 hover:text-rose-500 transition-all rounded-lg" onClick={(e) => { e.stopPropagation(); if(confirm("Destroy Module?")) deleteModuleMutation.mutate(m.id); }}><Trash2 className="h-4 w-4" /></Button>
               </div>
             ))}
           </CardContent>
         </Card>
+        )}
 
         {/* Main Workspace */}
-        <div className="xl:col-span-9 space-y-8">
+        <div className={activeModule ? "xl:col-span-12 space-y-8" : "xl:col-span-9 space-y-8"}>
           {showConfig && (
             <Card className="border-none shadow-2xl bg-white rounded-3xl overflow-hidden border-2 border-dashed border-slate-200 animate-in slide-in-from-top-4 duration-500">
                <CardHeader className="bg-slate-50 p-8 border-b border-slate-100">
@@ -178,15 +365,25 @@ export default function CustomModulesPage() {
                   </CardTitle>
                </CardHeader>
                <CardContent className="p-8 space-y-8">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                     <div className="space-y-3">
-                        <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Module Identity</Label>
+                        <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">1. Module Title</Label>
                         <Input placeholder="E.G., DEGREE VERIFICATION..." className="h-14 bg-slate-50 border-none font-black text-sm rounded-2xl shadow-inner uppercase" value={newModuleName} onChange={(e) => setNewModuleName(e.target.value)} />
                     </div>
                     <div className="space-y-3">
-                        <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Segment Definition</Label>
+                        <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">2. Base Database Columns</Label>
+                        <MultiSelect 
+                          options={availableColumns.map(c => c.label)}
+                          selected={selectedBaseColsLabels}
+                          onChange={setSelectedBaseColsLabels}
+                          placeholder="Select employee fields..."
+                          label="Base Columns"
+                        />
+                    </div>
+                    <div className="space-y-3">
+                        <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">3. Custom Data Columns</Label>
                         <div className="flex gap-2">
-                           <Input placeholder="COLUMN NAME..." className="h-14 bg-slate-50 border-none font-bold text-xs rounded-2xl shadow-inner uppercase" value={currentColInput} onChange={(e) => setCurrentColInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && addColumn()} />
+                           <Input placeholder="E.G., STATUS..." className="h-14 bg-slate-50 border-none font-bold text-xs rounded-2xl shadow-inner uppercase" value={currentColInput} onChange={(e) => setCurrentColInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && addColumn()} />
                            <Button className="h-14 w-14 bg-slate-900 rounded-2xl shadow-xl hover:bg-primary transition-all" onClick={addColumn}><Plus className="h-5 w-5" /></Button>
                         </div>
                     </div>
@@ -201,7 +398,20 @@ export default function CustomModulesPage() {
                      ))}
                   </div>
 
-                  <Button className="w-full h-16 font-black uppercase text-sm tracking-widest rounded-2xl shadow-2xl bg-slate-900 hover:bg-emerald-600 transition-all shadow-emerald-500/20" disabled={!newModuleName || newModuleCols.length === 0} onClick={() => createModuleMutation.mutate({ name: newModuleName, columns: newModuleCols })}>
+                  <Button 
+                    className="w-full h-16 font-black uppercase text-sm tracking-widest rounded-2xl shadow-2xl bg-slate-900 hover:bg-emerald-600 transition-all shadow-emerald-500/20" 
+                    disabled={!newModuleName} 
+                    onClick={() => {
+                        const baseIds = availableColumns.filter(c => selectedBaseColsLabels.includes(c.label)).map(c => c.id);
+                        createModuleMutation.mutate({ 
+                            title: newModuleName, 
+                            columns: {
+                                base: baseIds,
+                                custom: newModuleCols
+                            } 
+                        });
+                    }}
+                  >
                      Construct & Deploy Module
                   </Button>
                </CardContent>
@@ -218,112 +428,169 @@ export default function CustomModulesPage() {
 
           {activeModule && !showConfig && (
             <div className="space-y-8 animate-in fade-in zoom-in-95 duration-500">
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                <Card className="lg:col-span-4 border-none shadow-2xl bg-white rounded-3xl border border-slate-100">
-                  <CardHeader className="bg-slate-900 text-white p-8 rounded-t-3xl">
-                    <CardTitle className="text-[10px] font-black uppercase tracking-widest flex items-center italic text-primary">
-                        <Plus className="h-4 w-4 mr-3" /> Insert Entry 
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-8 space-y-6">
-                    {/* Emp Search */}
-                    <div className="space-y-2">
-                      <Label className="text-xs font-black text-slate-400 uppercase">1. Select Employee</Label>
-                      <div className="relative">
-                        <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                        <Input 
-                          placeholder="Search..." 
-                          className="pl-10"
-                          value={empSearch}
-                          onChange={(e) => setEmpSearch(e.target.value)}
-                        />
-                        {employees && employees.length > 0 && !selectedEmp && (
-                          <div className="absolute w-full mt-1 border rounded-md shadow-xl max-h-48 overflow-y-auto bg-white z-50 border-slate-200">
-                            {employees.map((e: any) => (
-                              <div key={e.id} className="p-3 hover:bg-slate-50 cursor-pointer border-b last:border-0" onClick={() => setSelectedEmp(e)}>
-                                <p className="font-bold text-xs uppercase">{e.name}</p>
-                                <p className="text-[10px] text-slate-400">{e.post_name}</p>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+              <Card className="border-none shadow-xl bg-white rounded-3xl overflow-hidden border border-slate-100 print:shadow-none print:border-none print:rounded-none">
+                <CardHeader className="bg-slate-900 text-white p-6 flex flex-col md:flex-row items-center justify-between rounded-t-3xl gap-4 print:hidden">
+                  <div className="flex items-center gap-4">
+                    <Button variant="ghost" size="icon" className="hover:bg-slate-800 text-white rounded-full" onClick={() => setActiveModule(null)}>
+                        <ArrowLeft className="h-5 w-5" />
+                    </Button>
+                    <div>
+                        <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center italic text-primary">
+                            <History className="h-5 w-5 mr-3" /> {activeModule.title} Registry
+                        </CardTitle>
+                        <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">
+                            Total Records: {mergedData.length}
+                        </p>
                     </div>
-
-                    {selectedEmp && (
-                      <div className="bg-primary/5 p-5 rounded-2xl border-2 border-dashed border-primary/20 flex flex-col items-center text-center animate-in zoom-in-95">
-                         <Badge className="bg-primary text-white mb-2 font-black text-[9px] h-6 px-3">{selectedEmp.bs}</Badge>
-                         <p className="font-black uppercase text-xs text-slate-900">{selectedEmp.name}</p>
-                         <p className="text-[8px] font-bold text-slate-500 uppercase mt-1 tracking-widest">{selectedEmp.post_name}</p>
-                         <Button variant="ghost" className="h-6 text-[9px] font-black text-rose-500 mt-4 uppercase p-0" onClick={() => setSelectedEmp(null)}>Reset</Button>
-                      </div>
-                    )}
-
-                    <div className="space-y-4 pt-4 border-t border-slate-50">
-                        <Label className="text-xs font-black text-slate-400 uppercase">2. Define Parameters</Label>
-                        {activeModule.columns.map((col: string) => (
-                          <div key={col} className="space-y-1.5">
-                             <Label className="text-[10px] font-bold text-slate-600 ml-1 uppercase">{col}</Label>
-                             <Input className="h-11 bg-slate-50 border-none font-bold text-xs uppercase rounded-xl shadow-inner" value={customData[col] || ''} onChange={(e) => setCustomData({...customData, [col]: e.target.value})} />
-                          </div>
+                  </div>
+                  <div className="flex items-center gap-2 w-full md:w-auto">
+                    <div className="relative flex-1 md:w-64">
+                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                        <Input placeholder="Search by name..." className="pl-9 bg-slate-800 border-none text-white placeholder:text-slate-500 h-9 rounded-xl text-xs uppercase" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                    </div>
+                    <Button variant="ghost" size="icon" className="text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10" onClick={() => exportData('excel')}><Download className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10" onClick={() => exportData('pdf')}><FileText className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10" onClick={() => exportData('print')}><Printer className="h-4 w-4" /></Button>
+                    <Button variant="ghost" className="text-rose-400 hover:text-rose-500 hover:bg-rose-500/10 h-9" onClick={() => {setActiveFilters({}); setSearchTerm('');}}>
+                        <RotateCcw className="h-4 w-4 mr-2" /> Clear
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-6 space-y-6 print:p-0">
+                    {/* Filters Section */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 print:hidden">
+                        {['officer_official', 'hq_field', 'post_status'].map(col => (
+                            <div key={`builtin-${col}`} className="space-y-1.5">
+                                <Label className="text-[9px] font-bold text-amber-600 uppercase">{getLabel(col)}</Label>
+                                <MultiSelect 
+                                    options={getUniqueOptions(col, false)}
+                                    selected={activeFilters[col] || []}
+                                    onChange={(vals) => handleFilterChange(col, vals)}
+                                    placeholder={`Filter ${getLabel(col)}...`}
+                                    label={getLabel(col)}
+                                />
+                            </div>
+                        ))}
+                        {(activeModule.columns?.base || []).filter((c: string) => !['officer_official', 'hq_field', 'post_status'].includes(c)).map((col: string) => (
+                            <div key={col} className="space-y-1.5">
+                                <Label className="text-[9px] font-bold text-slate-500 uppercase">{getLabel(col)}</Label>
+                                <MultiSelect 
+                                    options={getUniqueOptions(col, false)}
+                                    selected={activeFilters[col] || []}
+                                    onChange={(vals) => handleFilterChange(col, vals)}
+                                    placeholder={`Filter ${getLabel(col)}...`}
+                                    label={getLabel(col)}
+                                />
+                            </div>
+                        ))}
+                        {(activeModule.columns?.custom || []).map((col: string) => (
+                            <div key={col} className="space-y-1.5">
+                                <Label className="text-[9px] font-bold text-primary uppercase">{col}</Label>
+                                <MultiSelect 
+                                    options={getUniqueOptions(col, true)}
+                                    selected={activeFilters[col] || []}
+                                    onChange={(vals) => handleFilterChange(col, vals)}
+                                    placeholder={`Filter ${col}...`}
+                                    label={col}
+                                />
+                            </div>
                         ))}
                     </div>
 
-                    <Button className="w-full h-14 font-black uppercase text-xs tracking-widest rounded-2xl bg-slate-900 hover:bg-primary shadow-xl transition-all" disabled={!selectedEmp} onClick={() => saveDataMutation.mutate({ employee_id: selectedEmp.id, data: customData })}>
-                        <Save className="h-4 w-4 mr-2" /> Commit to Registry
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                <div className="lg:col-span-8 space-y-6">
-                    <h3 className="font-black text-slate-900 uppercase tracking-widest text-sm flex items-center italic px-2">
-                        <History className="h-4 w-4 mr-3 text-primary" /> {activeModule.name} Registry
-                    </h3>
-                    <Card className="border-none shadow-xl bg-white rounded-3xl overflow-hidden border border-slate-100">
+                    {/* Table */}
+                    <div className="rounded-xl border border-slate-200 overflow-x-auto max-h-[600px] custom-scrollbar print:max-h-none print:border-none print:overflow-visible">
                         <Table>
-                            <TableHeader className="bg-slate-900">
-                                <TableRow className="h-14 border-none hover:bg-slate-900">
-                                    <TableHead className="font-black text-white text-[9px] uppercase p-4">Identity</TableHead>
-                                    {activeModule.columns.map((col: string) => (
-                                        <TableHead key={col} className="font-black text-white text-[9px] uppercase p-4 text-center">{col}</TableHead>
+                            <TableHeader className="bg-slate-50 sticky top-0 z-20 print:static">
+                                <TableRow className="h-12 border-none">
+                                    {(activeModule.columns?.base || []).map((col: string) => (
+                                        <TableHead key={col} className="font-black text-slate-700 text-[10px] uppercase p-4 text-center whitespace-nowrap">{getLabel(col)}</TableHead>
                                     ))}
-                                    <TableHead className="text-right text-white font-black text-[9px] uppercase p-4">Manage</TableHead>
+                                    {(activeModule.columns?.custom || []).map((col: string) => (
+                                        <TableHead key={col} className="font-black text-primary text-[10px] uppercase p-4 text-center whitespace-nowrap bg-primary/5">{col}</TableHead>
+                                    ))}
+                                    <TableHead className="text-right text-slate-700 font-black text-[10px] uppercase p-4 whitespace-nowrap sticky right-0 bg-slate-50 z-30 print:hidden">Manage</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {dataLoading ? (
-                                    <TableRow><TableCell colSpan={activeModule.columns.length + 2} className="text-center py-20"><Skeleton className="h-10 w-full opacity-30" /></TableCell></TableRow>
-                                ) : moduleData?.length === 0 ? (
-                                    <TableRow><TableCell colSpan={activeModule.columns.length + 2} className="text-center py-20 text-slate-300 font-black uppercase text-[10px] italic">Registry currently empty</TableCell></TableRow>
+                                {allEmpLoading || dataLoading ? (
+                                    <TableRow><TableCell colSpan={99} className="text-center py-20"><Skeleton className="h-10 w-full max-w-md mx-auto opacity-30" /></TableCell></TableRow>
+                                ) : mergedData.length === 0 ? (
+                                    <TableRow><TableCell colSpan={99} className="text-center py-20 text-slate-300 font-black uppercase text-[10px] italic">No records found</TableCell></TableRow>
                                 ) : (
-                                    moduleData?.map((r: any) => (
-                                        <TableRow key={r.id} className="h-16 hover:bg-slate-50/50 border-b-slate-50 transition-colors group">
-                                            <TableCell className="p-4">
-                                                <div className="flex flex-col">
-                                                    <span className="font-black text-slate-900 text-xs uppercase leading-none">{r.employee_name}</span>
-                                                    <span className="text-[9px] font-bold text-slate-400 uppercase mt-1">{r.employee_post}</span>
-                                                </div>
-                                            </TableCell>
-                                            {activeModule.columns.map((col: string) => (
-                                                <TableCell key={col} className="p-4 text-center text-[10px] font-bold text-slate-600 uppercase tabular-nums">
-                                                    {r.data[col] || "—"}
+                                    mergedData.map((emp: any) => (
+                                        <TableRow key={emp.id} className="h-14 hover:bg-slate-50/50 transition-colors group">
+                                            {(activeModule.columns?.base || []).map((col: string) => (
+                                                <TableCell key={col} className="p-4 text-center text-[10px] font-bold text-slate-600 uppercase tabular-nums whitespace-nowrap">
+                                                    {emp[col] || "—"}
                                                 </TableCell>
                                             ))}
-                                            <TableCell className="text-right p-4">
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-200 hover:text-rose-500 transition-all opacity-0 group-hover:opacity-100" onClick={() => { if(confirm("Purge record?")) deleteRecordMutation.mutate(r.id); }}><Trash2 className="h-4 w-4" /></Button>
+                                            {(activeModule.columns?.custom || []).map((col: string) => (
+                                                <TableCell key={col} className="p-4 text-center text-[10px] font-black text-primary uppercase tabular-nums whitespace-nowrap bg-primary/[0.02]">
+                                                    {emp.customData[col] || "—"}
+                                                </TableCell>
+                                            ))}
+                                            <TableCell className="text-right p-4 whitespace-nowrap sticky right-0 bg-white group-hover:bg-slate-50 z-10 border-l border-slate-100 print:hidden">
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="sm" 
+                                                    className="h-8 text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary hover:text-white transition-all"
+                                                    onClick={() => {
+                                                        setEditingEmp(emp);
+                                                        setEditingData(emp.customData || {});
+                                                    }}
+                                                >
+                                                    <Edit2 className="h-3 w-3 mr-2" /> Edit
+                                                </Button>
                                             </TableCell>
                                         </TableRow>
                                     ))
                                 )}
                             </TableBody>
                         </Table>
-                    </Card>
-                </div>
-              </div>
+                    </div>
+                </CardContent>
+              </Card>
             </div>
           )}
         </div>
       </div>
+
+      <Dialog open={!!editingEmp} onOpenChange={(open) => !open && setEditingEmp(null)}>
+        <DialogContent className="sm:max-w-md bg-white rounded-3xl border-none shadow-2xl">
+          <DialogHeader className="bg-slate-900 p-6 -m-6 mb-6 rounded-t-3xl">
+            <DialogTitle className="text-white font-black uppercase tracking-widest text-sm flex items-center">
+              <Edit2 className="h-4 w-4 mr-3 text-primary" /> Edit Custom Data
+            </DialogTitle>
+            <p className="text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-widest">
+                {editingEmp?.name} - {editingEmp?.post_name}
+            </p>
+          </DialogHeader>
+          <div className="space-y-4 px-2">
+            {(activeModule?.columns?.custom || []).map((col: string) => (
+                <div key={col} className="space-y-2">
+                    <Label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">{col}</Label>
+                    <Input 
+                        className="h-12 bg-slate-50 border-none font-bold text-xs uppercase rounded-xl shadow-inner" 
+                        value={editingData[col] || ''} 
+                        onChange={(e) => setEditingData({...editingData, [col]: e.target.value})} 
+                    />
+                </div>
+            ))}
+          </div>
+          <DialogFooter className="mt-8 px-2 pb-2">
+            <Button variant="ghost" onClick={() => setEditingEmp(null)} className="h-12 uppercase text-xs font-black tracking-widest text-slate-500">Cancel</Button>
+            <Button 
+                className="h-12 px-8 uppercase text-xs font-black tracking-widest rounded-xl bg-slate-900 hover:bg-primary shadow-xl"
+                onClick={() => {
+                    saveDataMutation.mutate({ employee_id: editingEmp.id, data: editingData });
+                    setEditingEmp(null);
+                }}
+            >
+                <Save className="h-4 w-4 mr-2" /> Save Data
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

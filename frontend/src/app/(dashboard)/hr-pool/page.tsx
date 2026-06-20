@@ -522,18 +522,12 @@ function EmployeesContent() {
 
   const [editingEmp, setEditingEmp] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("personal");
-  const [page, setPage] = useState(1);
+
   const [search, setSearch] = useState('');
 
   const [filters, setFilters] = useState<any>({
-    officer_official: [],
-    hq_field: [],
-    wing_division: [],
-    region: [],
-    branch_office: [],
     post_name: [],
-    domicile: [],
-    post_status: []
+    domicile: []
   });
 
   // Sync filters from URL search params on mount
@@ -543,28 +537,21 @@ function EmployeesContent() {
     
     searchParams.forEach((value, key) => {
       if (key === 'search') {
-        if (search !== value) {
-          setSearch(value);
-        }
+        setSearch(value);
       } else if (newFilters[key] !== undefined) {
-        const arr = value.split(',');
-        if (newFilters[key].join(',') !== arr.join(',')) {
-          newFilters[key] = arr;
-          hasChanges = true;
-        }
+        newFilters[key] = value.split(',');
+        hasChanges = true;
       }
     });
 
     if (hasChanges) {
       setFilters(newFilters);
-      setPage(1);
     }
   }, [searchParams]);
 
   const [sort, setSort] = useState<{ key: string; order: 'asc' | 'desc' | null }>({ key: '', order: null });
 
   const handleSort = (key: string) => {
-    setPage(1);
     let nextOrder: 'asc' | 'desc' | null = null;
     if (sort.key !== key) {
       nextOrder = (key === 'bs') ? 'desc' : 'asc';
@@ -600,13 +587,14 @@ function EmployeesContent() {
       Object.keys(filters).forEach(key => {
         if (filters[key].length > 0) params.append(key, filters[key].join(','));
       });
-      const res = await api.get(`/api/employees?${params.toString()}`);
+      params.append('hr_pool_only', 'true');
+      const res = await api.get(`/api/hr-pool?${params.toString()}`);
       return res.data;
     }
   });
 
   const updateEmpMutation = useMutation({
-    mutationFn: (data: { id: number; data: any }) => api.put(`/api/employees/${data.id}`, data.data),
+    mutationFn: (data: { id: number; data: any }) => api.put(`/api/hr-pool/${data.id}`, data.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       setEditingEmp(null);
@@ -635,7 +623,7 @@ function EmployeesContent() {
   };
 
   const deleteEmpMutation = useMutation({
-    mutationFn: (id: number) => api.delete(`/api/employees/${id}`),
+    mutationFn: (id: number) => api.delete(`/api/hr-pool/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       setEditingEmp(null);
@@ -662,14 +650,8 @@ function EmployeesContent() {
 
   const resetFilters = () => {
     setFilters({
-      officer_official: [],
-      hq_field: [],
-      wing_division: [],
-      region: [],
-      branch_office: [],
       post_name: [],
-      domicile: [],
-      post_status: []
+      domicile: []
     });
     setSearch('');
   };
@@ -759,8 +741,10 @@ function EmployeesContent() {
             'Office/Branch': e.branch_office,
             'Domicile': e.domicile,
             'Appointment Date': formatDisplayDate(e.joining_date),
-            'Current Station DOJ': formatDisplayDate(e.place_of_posting),
-            'Duration': calculateDuration(e.place_of_posting)
+            'LIEN Start': formatDisplayDate(e.lien_start_date),
+            'LIEN End': formatDisplayDate(e.lien_end_date),
+            'LIEN Duration': calculateDuration(e.lien_start_date),
+            'LIEN Time': e.lien_approved_time || '---'
         })));
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Employees");
@@ -770,7 +754,7 @@ function EmployeesContent() {
         doc.text("Personnel Registry Report", 14, 15);
         autoTable(doc, {
             startY: 20,
-            head: [['#', 'Name', 'Designation', 'BPS', 'Office/Branch', 'Domicile', 'Appt. Date', 'Station DOJ', 'Duration']],
+            head: [['#', 'Name', 'Designation', 'BPS', 'Office/Branch', 'Domicile', 'Appt. Date', 'LIEN Start', 'LIEN End', 'Duration', 'LIEN Time']],
             body: sortedEmployees.map((e: any, i: number) => [
                 i + 1, 
                 e.name, 
@@ -779,8 +763,10 @@ function EmployeesContent() {
                 e.branch_office, 
                 e.domicile, 
                 formatDisplayDate(e.joining_date), 
-                formatDisplayDate(e.place_of_posting),
-                calculateDuration(e.place_of_posting)
+                formatDisplayDate(e.lien_start_date),
+                formatDisplayDate(e.lien_end_date),
+                calculateDuration(e.lien_start_date),
+                e.lien_approved_time || '---'
             ]),
         });
         doc.save(`Employees_Export_${new Date().getTime()}.pdf`);
@@ -978,19 +964,13 @@ function EmployeesContent() {
   return (
     <div className="space-y-6 w-full pb-10">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 className="text-4xl font-extrabold text-slate-900 tracking-tighter uppercase italic">Personnel <span className="text-primary">Registry</span></h1>
+        <h1 className="text-4xl font-extrabold text-slate-900 tracking-tighter uppercase italic">HR Strategic <span className="text-primary">Pool</span></h1>
       </div>
 
       <Card className="border-none shadow-sm bg-white overflow-visible rounded-xl border border-slate-100 no-print z-50">
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-9 gap-4 p-4 items-start">
-          <div className="w-full"><MultiSelect label="Officer/Officials" options={['Officer', 'Official']} selected={filters.officer_official} onChange={(vals) => setFilters({...filters, officer_official: vals})} placeholder="Officer/Officials" /></div>
-          <div className="w-full"><MultiSelect label="HQ/Field" options={['HQ', 'Field']} selected={filters.hq_field} onChange={(vals) => setFilters({...filters, hq_field: vals})} placeholder="HQ/Field" /></div>
-          <div className="w-full"><MultiSelect label="Wing/Division" options={filterOptions?.wing_division || []} selected={filters.wing_division || []} onChange={(vals) => setFilters({...filters, wing_division: vals})} placeholder="Wing/Division" /></div>
-          <div className="w-full"><MultiSelect label="Region" options={availableFilterRegions} selected={filters.region} onChange={(vals) => setFilters({...filters, region: vals})} placeholder="Region" /></div>
-          <div className="w-full"><MultiSelect label="Office/Branch" options={availableFilterBranches} selected={filters.branch_office} onChange={(vals) => setFilters({...filters, branch_office: vals})} placeholder="Office/Branch" /></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 p-4 items-start">
           <div className="w-full"><MultiSelect label="Designation" options={filterOptions?.post_name || []} selected={filters.post_name} onChange={(vals) => setFilters({...filters, post_name: vals})} placeholder="Designation" /></div>
           <div className="w-full"><MultiSelect label="Domicile" options={filterOptions?.domicile || []} selected={filters.domicile} onChange={(vals) => setFilters({...filters, domicile: vals})} placeholder="Domicile" /></div>
-          <div className="w-full"><MultiSelect label="Status" options={['Filled', 'Vacant']} selected={filters.post_status} onChange={(vals) => setFilters({...filters, post_status: vals})} placeholder="Status" /></div>
           <div className="flex items-start justify-center h-full">
              <Button variant="ghost" size="sm" className="h-[40px] px-4 w-full text-[10px] font-black text-rose-500 uppercase hover:bg-rose-50 border border-rose-100 rounded-xl" onClick={resetFilters}>Clear All</Button>
           </div>
@@ -1038,11 +1018,17 @@ function EmployeesContent() {
               <TableHead className="w-[7%] text-white font-black text-[11px] uppercase p-2 text-center cursor-pointer group" onClick={() => handleSort('joining_date')}>
                 <div className="flex items-center justify-center">Appt. Date <SortIcon column="joining_date" /></div>
               </TableHead>
-              <TableHead className="w-[7%] text-white font-black text-[11px] uppercase p-2 text-center cursor-pointer group" onClick={() => handleSort('place_of_posting')}>
-                <div className="flex items-center justify-center">Station DOJ <SortIcon column="place_of_posting" /></div>
+              <TableHead className="w-[7%] text-white font-black text-[11px] uppercase p-2 text-center cursor-pointer group" onClick={() => handleSort('lien_start_date')}>
+                <div className="flex items-center justify-center">LIEN Start <SortIcon column="lien_start_date" /></div>
               </TableHead>
-              <TableHead className="w-[8%] text-white font-black text-[11px] uppercase p-2 text-center cursor-pointer group" onClick={() => handleSort('place_of_posting')}>
-                <div className="flex items-center justify-center">Duration <SortIcon column="place_of_posting" /></div>
+              <TableHead className="w-[7%] text-white font-black text-[11px] uppercase p-2 text-center cursor-pointer group" onClick={() => handleSort('lien_end_date')}>
+                <div className="flex items-center justify-center">LIEN End <SortIcon column="lien_end_date" /></div>
+              </TableHead>
+              <TableHead className="w-[8%] text-white font-black text-[11px] uppercase p-2 text-center cursor-pointer group" onClick={() => handleSort('lien_start_date')}>
+                <div className="flex items-center justify-center">Duration <SortIcon column="lien_start_date" /></div>
+              </TableHead>
+              <TableHead className="w-[7%] text-white font-black text-[11px] uppercase p-2 text-center cursor-pointer group" onClick={() => handleSort('lien_approved_time')}>
+                <div className="flex items-center justify-center">LIEN Time <SortIcon column="lien_approved_time" /></div>
               </TableHead>
               <TableHead className="w-[5%] text-center text-white font-black text-[11px] uppercase p-2">Actions</TableHead>
             </TableRow>
@@ -1053,9 +1039,9 @@ function EmployeesContent() {
             ) : sortedEmployees.length === 0 ? (
               <TableRow><TableCell colSpan={10} className="text-center py-32 text-slate-300 font-black uppercase text-[10px] italic">No matching registry records</TableCell></TableRow>
             ) : (
-              sortedEmployees.slice((page - 1) * 50, page * 50).map((e: any, i: number) => (
+              sortedEmployees.map((e: any, i: number) => (
                 <TableRow key={e.id} id={`emp-${e.id}`} className={cn("group hover:bg-slate-50 border-b-slate-50 min-h-20 transition-all", highlightId === e.id.toString() && "bg-primary/5 animate-pulse")}>
-                  <TableCell className="text-center font-black text-slate-300 text-[11px] p-2">{(page - 1) * 50 + i + 1}</TableCell>
+                  <TableCell className="text-center font-black text-slate-300 text-[11px] p-2">{i + 1}</TableCell>
                   <TableCell className="p-2 whitespace-normal break-words">
                       <span className="font-black text-slate-900 text-[14px] uppercase tracking-tight leading-tight">{e.name}</span>
                   </TableCell>
@@ -1068,12 +1054,14 @@ function EmployeesContent() {
                   </TableCell>
                   <TableCell className="p-2 text-[12px] font-bold text-slate-600 uppercase whitespace-normal break-words leading-tight">{e.domicile}</TableCell>
                   <TableCell className="p-2 text-[12px] font-bold text-slate-500 text-center uppercase tabular-nums leading-tight">{formatDisplayDate(e.joining_date)}</TableCell>
-                  <TableCell className="p-2 text-[12px] font-bold text-slate-500 text-center uppercase tabular-nums leading-tight">{formatDisplayDate(e.place_of_posting)}</TableCell>
+                  <TableCell className="p-2 text-[12px] font-bold text-slate-500 text-center uppercase tabular-nums leading-tight">{formatDisplayDate(e.lien_start_date)}</TableCell>
+                  <TableCell className="p-2 text-[12px] font-bold text-slate-500 text-center uppercase tabular-nums leading-tight">{formatDisplayDate(e.lien_end_date)}</TableCell>
                   <TableCell className="p-2 text-center">
                     <span className="text-[12px] font-black text-primary uppercase bg-primary/5 px-1.5 py-0.5 rounded whitespace-nowrap">
-                      {calculateDuration(e.place_of_posting)}
+                      {calculateDuration(e.lien_start_date)}
                     </span>
                   </TableCell>
+                  <TableCell className="p-2 text-[12px] font-bold text-slate-500 text-center uppercase tabular-nums leading-tight">{e.lien_approved_time || '---'}</TableCell>
                   <TableCell className="text-center p-2">
                     <div className="flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-all" title={canEdit ? "Edit Employee" : "View master record"} onClick={() => setEditingEmp(e)}>
@@ -1086,17 +1074,6 @@ function EmployeesContent() {
             )}
           </TableBody>
         </Table>
-        {sortedEmployees?.length > 50 && (
-          <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-slate-100">
-            <div className="text-xs font-bold text-slate-500">
-              Showing {(page - 1) * 50 + 1} to {Math.min(page * 50, sortedEmployees.length)} of {sortedEmployees.length} records
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Previous</Button>
-              <Button variant="outline" size="sm" onClick={() => setPage(p => p + 1)} disabled={page * 50 >= sortedEmployees.length}>Next</Button>
-            </div>
-          </div>
-        )}
       </Card>
 
       <Dialog open={!!editingEmp} onOpenChange={(open) => !open && setEditingEmp(null)}>
@@ -1139,13 +1116,8 @@ function EmployeesContent() {
                   
                   <TabsList className="flex flex-col h-auto bg-transparent gap-2 p-0">
                     {[
-                      { id: 'personal', icon: User, label: 'Personal Info' },
-                      { id: 'contact', icon: Contact, label: 'Contact & Origin' },
-                      { id: 'service', icon: Briefcase, label: 'Service Details' },
-                      { id: 'posting', icon: MapPin, label: 'Posting & Location' },
-                      { id: 'leaves', icon: CalendarDays, label: 'Leave History' },
-                      { id: 'acr', icon: FileText, label: 'ACR History' },
-                      { id: 'additional', icon: FileText, label: 'Additional Info' },
+                      { id: 'personal', icon: User, label: 'Personal & Service' },
+                      { id: 'lien', icon: CalendarDays, label: 'LIEN Information' },
                     ].map((tab) => (
                       <TabsTrigger 
                         key={tab.id}
@@ -1179,116 +1151,32 @@ function EmployeesContent() {
                     <TabsContent value="personal" className="m-0 border-none outline-none">
                       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                         <h3 className="text-base font-semibold text-slate-800 border-b border-slate-100 pb-3 mb-6 flex items-center">
-                          <User className="h-5 w-5 mr-2 text-slate-400" /> Personal Information
+                          <User className="h-5 w-5 mr-2 text-slate-400" /> Personal & Service Info
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-8 gap-y-6">
                           {[
+                            { key: 's_no', label: 'S.No' },
                             { key: 'name', label: 'Full Name' },
-                            { key: 'father_name', label: "Father's Name" },
-                            { key: 'cnic', label: 'CNIC Number' },
-                            { key: 'dob', label: 'Date of Birth', type: 'date' },
-                            { key: 'gender', label: 'Gender' },
-                            { key: 'religion', label: 'Religion' },
-                            { key: 'marital_status', label: 'Marital Status' },
-                            { key: 'blood_group', label: 'Blood Group' },
-                          ].map(renderField)}
-                        </div>
-                      </div>
-                    </TabsContent>
-
-                    <TabsContent value="contact" className="m-0 border-none outline-none">
-                      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                        <h3 className="text-base font-semibold text-slate-800 border-b border-slate-100 pb-3 mb-6 flex items-center">
-                          <Contact className="h-5 w-5 mr-2 text-slate-400" /> Contact & Origin
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-8 gap-y-6">
-                          {[
-                            { key: 'mobile_no', label: 'Mobile No' },
-                            { key: 'email', label: 'Email Address' },
-                            { key: 'domicile', label: 'Domicile' },
-                            { key: 'home_province', label: 'Home Province' },
-                            { key: 'home_district', label: 'Home District' },
-                            { key: 'rural_urban', label: 'Rural/Urban' },
-                            { key: 'temp_address', label: 'Temporary Address' },
-                            { key: 'perm_address', label: 'Permanent Address' },
-                          ].map(renderField)}
-                        </div>
-                      </div>
-                    </TabsContent>
-
-                    <TabsContent value="service" className="m-0 border-none outline-none">
-                      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                        <h3 className="text-base font-semibold text-slate-800 border-b border-slate-100 pb-3 mb-6 flex items-center">
-                          <Briefcase className="h-5 w-5 mr-2 text-slate-400" /> Service Details
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-8 gap-y-6">
-                          {[
-                            { key: 'employee_no', label: 'Employee No' },
-                            { key: 'personal_file_no', label: 'Personal File No' },
-                            { key: 'code', label: 'Code' },
-                            { key: 'seniority_no', label: 'Seniority No' },
-                            { key: 'officer_official', label: 'Officer / Official' },
-                            { key: 'hq_field', label: 'HQ / Field' },
-                            { key: 'bs', label: 'BPS (Grade)' },
                             { key: 'post_name', label: 'Designation' },
-                            { key: 'cadre_type', label: 'Cadre Type' },
-                            { key: 'job_type', label: 'Job Type' },
-                            { key: 'direct_promotion', label: 'Direct / Promotion' },
-                            { key: 'entry_govt', label: 'Govt Entry Date', type: 'date' },
+                            { key: 'bs', label: 'BPS (Grade)' },
+                            { key: 'branch_office', label: 'Office/Branch' },
+                            { key: 'domicile', label: 'Domicile' },
                             { key: 'joining_date', label: 'Appointment Date', type: 'date' },
-                            { key: 'probation_status', label: 'Probation Status' },
-                            { key: 'probation_till_date', label: 'Probation Till Date', type: 'date' },
                           ].map(renderField)}
                         </div>
                       </div>
                     </TabsContent>
 
-                    <TabsContent value="posting" className="m-0 border-none outline-none space-y-6">
+                    <TabsContent value="lien" className="m-0 border-none outline-none">
                       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                         <h3 className="text-base font-semibold text-slate-800 border-b border-slate-100 pb-3 mb-6 flex items-center">
-                          <MapPin className="h-5 w-5 mr-2 text-slate-400" /> Posting & Location
+                          <CalendarDays className="h-5 w-5 mr-2 text-slate-400" /> LIEN Information
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-8 gap-y-6">
                           {[
-                            { key: 'head_office', label: 'Head Office' },
-                            { key: 'wing_division', label: 'Wing / Division' },
-                            { key: 'section_district', label: 'Region / District' },
-                            { key: 'branch_office', label: 'Office / Branch' },
-                            { key: 'post_status', label: 'Post Status' },
-                            { key: 'place_of_posting', label: 'Date of Joining Station', type: 'date' },
-                            { key: 'order_number', label: 'Order Number' },
-                            { key: 'order_date', label: 'Order Date', type: 'date' },
-                            { key: 'relieving_date', label: 'Relieving Date', type: 'date' },
-                          ].map(renderField)}
-                        </div>
-                        </div>
-                        <TransferHistorySection employeeId={editingEmp?.id} employeeName={editingEmp?.name} currentPosting={editingEmp} onRegisterTransfer={handleRegisterTransfer} canEdit={canEdit} />
-                        </TabsContent>
-
-                        <TabsContent value="transfers" className="m-0 border-none outline-none">
-                        {/* Empty, now redundant as it's in posting tab */}
-                        </TabsContent>
-                    
-                    <TabsContent value="leaves" className="m-0 border-none outline-none">
-                      <LeaveHistorySection employeeId={editingEmp?.id} employeeName={editingEmp?.name} canEdit={canEdit} />
-                    </TabsContent>
-                    
-                    <TabsContent value="acr" className="m-0 border-none outline-none">
-                      <ACRHistorySection employeeId={editingEmp?.id} employeeName={editingEmp?.name} canEdit={canEdit} />
-                    </TabsContent>
-
-                    <TabsContent value="additional" className="m-0 border-none outline-none">
-                      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                        <h3 className="text-base font-semibold text-slate-800 border-b border-slate-100 pb-3 mb-6 flex items-center">
-                          <FileText className="h-5 w-5 mr-2 text-slate-400" /> Additional Information
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-8 gap-y-6">
-                          {[
-                            { key: 'qualification', label: 'Qualification' },
-                            { key: 'area_expertise', label: 'Area of Expertise' },
-                            { key: 'disability', label: 'Disability Status' },
-                            { key: 'dual_nationality', label: 'Dual Nationality' },
-                            { key: 'passport_noc', label: 'Passport NOC' },
+                            { key: 'lien_start_date', label: 'LIEN Start Date', type: 'date' },
+                            { key: 'lien_end_date', label: 'LIEN End Date', type: 'date' },
+                            { key: 'lien_approved_time', label: 'LIEN Time (e.g. 1 year)' },
                           ].map(renderField)}
                         </div>
                       </div>
@@ -1306,9 +1194,9 @@ function EmployeesContent() {
   );
 }
 
-export default function EmployeesPage() {
+export default function HRPoolPage() {
   return (
-    <Suspense fallback={<div>Loading Registry Console...</div>}>
+    <Suspense fallback={<div>Loading HR Strategic Pool...</div>}>
       <EmployeesContent />
     </Suspense>
   );

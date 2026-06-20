@@ -17,11 +17,17 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
-  const setAuth = useAuthStore((state) => state.setAuth);
+  const { token, setAuth, _hasHydrated } = useAuthStore();
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (isMounted && _hasHydrated && token) {
+      router.replace('/');
+    }
+  }, [isMounted, _hasHydrated, token, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

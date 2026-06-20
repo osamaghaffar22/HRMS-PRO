@@ -28,3 +28,7 @@ Database.xlsx
 Details.docx
 *.png
 *.json
+
+# Custom Additions
+data/
+archive/

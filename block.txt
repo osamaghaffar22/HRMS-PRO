@@ -1,0 +1,113 @@
+const { data: availableYears = ['2023', '2024', '2025', '2026'] } = useQuery({
+    queryKey: ['acr-years'],
+    queryFn: async () => {
+      const res = await api.get('/api/config/acr_years');
+      return res.data.value || ['2023', '2024', '2025', '2026'];
+    }
+  });
+
+  useEffect(() => {
+    if (availableYears.length > 0 && tabYearsFilter.length === 0) {
+      const lastYear = availableYears[availableYears.length - 1];
+      setTabYearsFilter([lastYear]);
+    }
+  }, [availableYears]);
+
+  const [completionFilter, setCompletionFilter] = useState<string[]>([]); 
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [gaFilter, setGaFilter] = useState<string[]>([]);
+  const [remarksFilter, setRemarksFilter] = useState<string[]>([]);
+  const [fitnessFilter, setFitnessFilter] = useState<string[]>([]);
+  const [promotionFilter, setPromotionFilter] = useState<string[]>([]);
+  const [designationFilter, setDesignationFilter] = useState<string[]>([]);
+
+// Form States
+  const [formEmpSearch, setFormEmpSearch] = useState('');
+  const [selectedFormEmp, setSelectedFormEmp] = useState<any>(null);
+  const [acrFormData, setAcrFormData] = useState<any>({
+    year: new Date().getFullYear().toString(),
+    from_date: '',
+    to_date: '',
+    ga: '',
+    promotion: '', 
+    remarks: '',
+    fitness_after_25_years: '',
+    ro_name: '',
+    ro_date: '',
+    co_name: '',
+    co_date: '', 
+    result: '',
+    status: 'Pending'
+  });
+
+  const [roSearch, setRoSearch] = useState('');
+  const [coSearch, setCoSearch] = useState('');
+  const [selectedRo, setSelectedRo] = useState<any>(null);
+  const [selectedCo, setSelectedCo] = useState<any>(null);
+
+  // UI/Nav States
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [dropdownIdx, setDropdownIdx] = useState(0);
+  const [personnelIdx, setPersonnelIdx] = useState(0);
+  const [roIdx, setRoIdx] = useState(0);
+  const [coIdx, setCoIdx] = useState(0);
+  const [editingPeriodId, setEditingPeriodId] = useState<number | null>(null);
+  const isJumping = useRef(false);
+
+  // History Filter States
+  const [historyTypeFilter, setHistoryTypeFilter] = useState<string>('All');
+  const [historySearch, setHistorySearch] = useState('');
+  const [historyGaFilter, setHistoryGaFilter] = useState<string[]>([]);
+  const [historyPromotionFilter, setHistoryPromotionFilter] = useState<string[]>([]);
+  const [historyRemarksFilter, setHistoryRemarksFilter] = useState<string[]>([]);
+  const [historyFitnessFilter, setHistoryFitnessFilter] = useState<string[]>([]);
+  const [historyYearFilter, setHistoryYearFilter] = useState<string[]>([]);
+  const [historyPage, setHistoryPage] = useState(1);
+  const ITEMS_PER_PAGE = 50;
+
+  // Focus Refs
+  const personnelSearchRef = useRef<HTMLInputElement>(null);
+  const yearInputRef = useRef<HTMLInputElement>(null);
+  const fromDateRef = useRef<HTMLInputElement>(null);
+  const toDateRef = useRef<HTMLInputElement>(null);
+  const gaInputRef = useRef<HTMLInputElement>(null);
+  const promotionInputRef = useRef<HTMLInputElement>(null);
+  const fitnessInputRef = useRef<HTMLInputElement>(null);
+  const resultInputRef = useRef<HTMLInputElement>(null);
+  const roSearchRef = useRef<HTMLInputElement>(null);
+  const roDateRef = useRef<HTMLInputElement>(null);
+  const coSearchRef = useRef<HTMLInputElement>(null);
+  const coDateRef = useRef<HTMLInputElement>(null);
+  const remarksRef = useRef<HTMLInputElement>(null);
+  const saveBtnRef = useRef<HTMLButtonElement>(null);
+
+  const [sort, setSort] = useState<{ key: string; order: 'asc' | 'desc' | null }>({ key: '', order: null });
+  const deferredSearch = React.useDeferredValue(search);
+  const deferredFormEmpSearch = React.useDeferredValue(formEmpSearch);
+
+  const handleSort = (key: string) => {
+    let nextOrder: 'asc' | 'desc' | null = null;
+    if (sort.key !== key) {
+      nextOrder = (key === 'bs') ? 'desc' : 'asc';
+    } else {
+      if (sort.order === 'asc') nextOrder = 'desc';
+      else if (sort.order === 'desc') nextOrder = null;
+      else nextOrder = 'asc';
+    }
+    setSort({ key, order: nextOrder });
+  };
+
+  const SortIcon = ({ column }: { column: string }) => {
+    if (sort.key !== column || !sort.order) return <ArrowUpDown className="ml-2 h-3 w-3 opacity-30" />;
+    return sort.order === 'asc' ? <ArrowUp className="ml-2 h-3 w-3 text-primary" /> : <ArrowDown className="ml-2 h-3 w-3 text-primary" />;
+  };
+
+  const queryClient = useQueryClient();
+
+  const { data: availableYears = ['2023', '2024', '2025', '2026'] } = useQuery({
+    queryKey: ['acr-years'],
+    queryFn: async () => {
+      const res = await api.get('/api/config/acr_years');
+      return res.data.value || ['2023', '2024', '2025', '2026'];
+    }
+  });

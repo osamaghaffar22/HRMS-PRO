@@ -67,7 +67,9 @@ export default function DashboardPage() {
     d.designation.toLowerCase().includes(desigSearch.toLowerCase())
   );
 
-  const StatCard = ({ title, data, filters, colorClass }: any) => (
+  const StatCard = ({ title, data, filters, colorClass }: any) => {
+    const basePath = filters.basePath || '/employees';
+    return (
     <Card className={cn(
       "corporate-card border-none shadow-sm hover:shadow-2xl transition-all duration-500 group overflow-hidden bg-white relative h-full hover:-translate-y-1 hover:scale-[1.02] cursor-default",
       "before:absolute before:top-0 before:left-0 before:w-1 before:h-full",
@@ -80,22 +82,23 @@ export default function DashboardPage() {
         <h3 className="font-bold text-slate-800 uppercase text-sm tracking-wider mb-4 text-center">{title}</h3>
 
         <div className="grid grid-cols-3 gap-2">
-          <div className="flex flex-col items-center p-2 rounded-xl bg-slate-50 border border-slate-100/50 hover:bg-white hover:shadow-md transition-all cursor-pointer" onClick={() => router.push(`/employees?${filters.total}`)}>
+          <div className="flex flex-col items-center p-2 rounded-xl bg-slate-50 border border-slate-100/50 hover:bg-white hover:shadow-md transition-all cursor-pointer" onClick={() => router.push(`${basePath}?${filters.total}`)}>
             <span className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">Total</span>
             {statsLoading ? <Skeleton className="h-4 w-6" /> : <span className="text-base font-black text-slate-900 leading-none">{data?.total || 0}</span>}
           </div>
-          <div className="flex flex-col items-center p-2 rounded-xl bg-blue-50/50 border border-blue-100/50 hover:bg-white hover:shadow-md transition-all cursor-pointer" onClick={() => router.push(`/employees?${filters.filled}`)}>
+          <div className="flex flex-col items-center p-2 rounded-xl bg-blue-50/50 border border-blue-100/50 hover:bg-white hover:shadow-md transition-all cursor-pointer" onClick={() => router.push(`${basePath}?${filters.filled}`)}>
             <span className="text-[9px] font-bold text-blue-400 uppercase mb-0.5">Filled</span>
             {statsLoading ? <Skeleton className="h-4 w-6" /> : <span className="text-base font-black text-blue-600 leading-none">{data?.filled || 0}</span>}
           </div>
-          <div className="flex flex-col items-center p-2 rounded-xl bg-rose-50/50 border border-rose-100/50 hover:bg-white hover:shadow-md transition-all cursor-pointer" onClick={() => router.push(`/employees?${filters.vacant}`)}>
+          <div className="flex flex-col items-center p-2 rounded-xl bg-rose-50/50 border border-rose-100/50 hover:bg-white hover:shadow-md transition-all cursor-pointer" onClick={() => router.push(`${basePath}?${filters.vacant}`)}>
             <span className="text-[9px] font-black text-rose-400 uppercase mb-0.5">Vacant</span>
             {statsLoading ? <Skeleton className="h-4 w-6" /> : <span className="text-base font-black text-rose-600 leading-none">{data?.vacant || 0}</span>}
           </div>
         </div>
       </div>
     </Card>
-  );
+    );
+  };
 
   return (
     <div className="space-y-4 max-w-[1700px] mx-auto pt-2 pb-6">
@@ -108,9 +111,9 @@ export default function DashboardPage() {
         <StatCard title="HQ Officers" data={stats?.hq_officers} filters={{ total: 'hq_field=HQ&officer_official=Officer', filled: 'hq_field=HQ&officer_official=Officer&post_status=Filled', vacant: 'hq_field=HQ&officer_official=Officer&post_status=Vacant' }} colorClass="red" />
         
         <StatCard title="Field Officers" data={stats?.field_officers} filters={{ total: 'hq_field=Field&officer_official=Officer', filled: 'hq_field=Field&officer_official=Officer&post_status=Filled', vacant: 'hq_field=Field&officer_official=Officer&post_status=Vacant' }} colorClass="purple" />
-        <StatCard title="HQ Core Staff" data={stats?.hq_officials} filters={{ total: 'hq_field=HQ&officer_official=Official', filled: 'hq_field=HQ&officer_official=Official&post_status=Filled', vacant: 'hq_field=HQ&officer_official=Official&post_status=Vacant' }} colorClass="blue" />
+        <StatCard title="HQ Officials" data={stats?.hq_officials} filters={{ total: 'hq_field=HQ&officer_official=Official', filled: 'hq_field=HQ&officer_official=Official&post_status=Filled', vacant: 'hq_field=HQ&officer_official=Official&post_status=Vacant' }} colorClass="blue" />
         <StatCard title="Field Officials" data={stats?.field_officials} filters={{ total: 'hq_field=Field&officer_official=Official', filled: 'hq_field=Field&officer_official=Official&post_status=Filled', vacant: 'hq_field=Field&officer_official=Official&post_status=Vacant' }} colorClass="green" />
-        <StatCard title="HR Strategic Pool" data={stats?.hr_pool} filters={{ total: 'search=HR POOL', filled: 'search=HR POOL&post_status=Filled', vacant: 'search=HR POOL&post_status=Vacant' }} colorClass="gray" />
+        <StatCard title="HR Strategic Pool" data={stats?.hr_pool} filters={{ basePath: '/hr-pool', total: '', filled: 'post_status=Filled', vacant: 'post_status=Vacant' }} colorClass="gray" />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 px-2 items-start mt-6">
@@ -183,7 +186,8 @@ export default function DashboardPage() {
                 <TableHeader className="bg-slate-50 sticky top-0 z-10">
                    <TableRow>
                       <TableHead className="font-bold text-slate-500 text-[11px] uppercase p-2 pl-4">Personnel Information</TableHead>
-                      <TableHead className="text-center font-bold text-slate-500 text-[11px] uppercase p-2">Active Post</TableHead>
+                      <TableHead className="text-center font-bold text-slate-500 text-[11px] uppercase p-2">Designation</TableHead>
+                      <TableHead className="text-center font-bold text-slate-500 text-[11px] uppercase p-2">Office/Branch</TableHead>
                       <TableHead className="text-center font-bold text-slate-500 text-[11px] uppercase p-2">Status</TableHead>
                       <TableHead className="text-right font-bold text-slate-500 text-[11px] uppercase p-2 pr-4">Action</TableHead>
                    </TableRow>
@@ -209,6 +213,9 @@ export default function DashboardPage() {
                                  <span className="text-slate-600 text-[10px] font-semibold uppercase">{emp.post_name}</span>
                                  <span className="text-[9px] font-bold text-slate-400 uppercase">Grade {emp.bs}</span>
                               </div>
+                           </TableCell>
+                           <TableCell className="text-center p-2">
+                               <span className="text-slate-600 text-[10px] font-semibold uppercase">{emp.branch_office}</span>
                            </TableCell>
                            <TableCell className="p-2 text-center">
                               <Badge className={cn(

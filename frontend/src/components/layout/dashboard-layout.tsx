@@ -2,7 +2,7 @@
 
 import { useAuthStore } from '@/lib/auth-store';
 import { useRouter, usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { 
   LayoutDashboard, 
   Users, 
@@ -17,7 +17,11 @@ import {
   Menu,
   RefreshCw,
   Download,
-  Search
+  Search,
+  Lock,
+  ShieldAlert,
+  ShieldCheck,
+  Scale
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -27,15 +31,18 @@ import api from '@/lib/api';
 const navItems = [
   { label: 'Dashboard', icon: LayoutDashboard, href: '/' },
   { label: 'Employees', icon: Users, href: '/employees' },
+  { label: 'HR Strategic Pool', icon: ShieldAlert, href: '/hr-pool' },
   { label: 'Transfer Posting', icon: ArrowLeftRight, href: '/transfers' },
   { label: 'ACR Management', icon: FileText, href: '/acr' },
+  { label: 'Rationalization', icon: Scale, href: '/rationalization' },
   { label: 'Leave Management', icon: CalendarDays, href: '/leaves' },
+  { label: 'File Tracking', icon: Settings, href: '/files' },
   { label: 'Reports', icon: FileSpreadsheet, href: '/reports' },
   { label: 'Custom Modules', icon: Settings, href: '/custom' },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, token, logout } = useAuthStore();
+  const { user, token, logout, _hasHydrated } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -43,34 +50,90 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isMounted, setIsMounted] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
 
+  const pathPermissionMap: Record<string, string> = {
+    '/employees': 'employees',
+    '/hr-pool': 'employees',
+    '/transfers': 'transfers',
+    '/acr': 'acr',
+    '/rationalization': 'rationalization',
+    '/leaves': 'leaves',
+    '/files': 'files',
+    '/reports': 'reports',
+    '/custom': 'custom',
+  };
+
+  const filteredNavItems = navItems.filter((item) => {
+    if (item.href === '/') return true;
+    const requiredPermission = pathPermissionMap[item.href];
+    if (!requiredPermission) return true;
+    return user?.role === 'Admin' || user?.permissions?.[requiredPermission] === true;
+  });
+
+  const displayNavItems = [...filteredNavItems];
+  if (user?.role === 'Admin') {
+    displayNavItems.push({ label: 'Administrator', icon: ShieldCheck, href: '/admin' });
+  }
+
+  const matchedPath = Object.keys(pathPermissionMap).find(p => pathname === p || pathname.startsWith(p + '/'));
+  const requiredPermission = matchedPath ? pathPermissionMap[matchedPath] : undefined;
+  const hasAccess = user?.role === 'Admin' || 
+    (pathname === '/admin' ? false : (!requiredPermission || user?.permissions?.[requiredPermission] === true));
+
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
   useEffect(() => {
-    if (isMounted && !token) {
-      router.push('/login');
+    if (isMounted && _hasHydrated && !token) {
+      router.replace('/login');
     }
-  }, [token, router, isMounted]);
+  }, [token, router, isMounted, _hasHydrated]);
 
-  const handleImportExcel = async () => {
-    if (!confirm("Update database from Excel?")) return;
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!confirm(`Update database from ${file.name}?`)) {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
     setIsSyncing(true);
     try {
-      await api.post('/api/sync/import-excel');
-      window.location.reload();
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      await api.post('/api/sync/import-excel', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      alert("Excel import started in the background. It may take a few moments. Please refresh the page after a while.");
     } catch (err) {
-      alert("Sync failed. Check if Excel is open.");
+      alert("Import failed. Check your file format or try again.");
     } finally {
       setIsSyncing(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
   const handleExportExcel = async () => {
     setIsSyncing(true);
     try {
-      await api.post('/api/sync/export-excel');
-      alert("Excel updated!");
+      const response = await api.get('/api/sync/export-excel', {
+        responseType: 'blob',
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'Employees_Export.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
     } catch (err) {
       alert("Export failed.");
     } finally {
@@ -86,22 +149,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Sidebar - Modern Purple Style */}
       <aside className={cn(
         "hidden md:flex flex-col bg-primary transition-all duration-500 ease-in-out shadow-2xl shadow-primary/20 z-20",
-        isCollapsed ? "w-20" : "w-72"
+        isCollapsed ? "w-20" : "w-60"
       )}>
-        <div className="h-24 flex items-center px-8 shrink-0 overflow-hidden border-b border-white/10">
-          <div className="bg-white h-12 w-12 rounded-2xl flex items-center justify-center text-primary shadow-lg shrink-0">
-            <span className="font-black text-2xl">H</span>
+        <div className="h-24 flex items-center px-6 shrink-0 overflow-hidden border-b border-white/10">
+          <div className="bg-white h-10 w-10 rounded-2xl flex items-center justify-center text-primary shadow-lg shrink-0">
+            <span className="font-black text-xl">H</span>
           </div>
           {!isCollapsed && (
-            <div className="ml-4 flex flex-col">
-              <span className="font-black text-xl tracking-tighter text-white leading-none">HRMS</span>
-              <span className="text-[10px] font-black text-white/60 uppercase tracking-[0.2em] mt-1">Enterprise Pro</span>
+            <div className="ml-3 flex flex-col">
+              <span className="font-black text-lg tracking-tighter text-white leading-none">HRMS</span>
+              <span className="text-[8px] font-black text-white/60 uppercase tracking-[0.2em] mt-1">Enterprise Pro</span>
             </div>
           )}
         </div>
 
         <nav className="flex-1 overflow-y-auto py-2 px-3 space-y-0.5">
-          {navItems.map((item) => {
+          {displayNavItems.map((item) => {
             const isActive = pathname === item.href;
             return (
               <Link
@@ -123,11 +186,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </nav>
 
         <div className="p-4 space-y-2 border-t border-white/10">
-          {!isCollapsed && (
+          {(user?.role === 'Admin' || user?.permissions?.data_exchange === true) && !isCollapsed && (
             <div className="flex flex-col gap-1.5">
                <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest px-2">Data Exchange</p>
                <div className="flex gap-1">
-                  <Button variant="ghost" className="flex-1 justify-center text-[11px] font-bold text-white bg-white/10 hover:bg-white/20 h-8 px-2 rounded-lg border border-white/5" onClick={handleImportExcel} disabled={isSyncing}>
+                  <input type="file" accept=".xlsx, .xls" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
+                  <Button variant="ghost" className="flex-1 justify-center text-[11px] font-bold text-white bg-white/10 hover:bg-white/20 h-8 px-2 rounded-lg border border-white/5" onClick={handleImportClick} disabled={isSyncing}>
                      <RefreshCw className={cn("h-3 w-3 mr-1.5", isSyncing && "animate-spin")} /> Import
                   </Button>
                   <Button variant="ghost" className="flex-1 justify-center text-[11px] font-bold text-white bg-white/10 hover:bg-white/20 h-8 px-2 rounded-lg border border-white/5" onClick={handleExportExcel} disabled={isSyncing}>
@@ -158,8 +222,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="flex flex-col" style={{ fontFamily: 'Arial, sans-serif' }}>
             <h1 className="text-2xl font-black tracking-tighter text-slate-900 uppercase leading-none">
                {pathname === '/employees' ? 'Employees' : 
+                pathname === '/hr-pool' ? 'HR Strategic Pool' : 
                 pathname === '/transfers' ? 'Transfers' :
                 pathname === '/acr' ? 'ACR Management' :
+                pathname === '/rationalization' ? 'Rationalization' :
                 pathname === '/leaves' ? 'Leaves' :
                 pathname === '/reports' ? 'Reports' :
                 pathname === '/custom' ? 'Custom Modules' : 'Dashboard'}
@@ -180,6 +246,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Button 
               variant="ghost" 
               size="icon" 
+              className="text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl h-10 w-10 shrink-0"
+              onClick={logout}
+              title="Logout"
+            >
+              <LogOut className="h-4.5 w-4.5" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
               className="md:hidden text-slate-600"
               onClick={() => setIsMobileOpen(!isMobileOpen)}
             >
@@ -191,7 +266,39 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Page Content */}
         <main className="flex-1 overflow-y-auto p-10 scroll-smooth">
           <div className="max-w-[1800px] mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700">
-            {children}
+            {hasAccess ? children : (
+              <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 animate-in fade-in zoom-in-95 duration-500">
+                <div className="relative mb-6">
+                  <div className="bg-rose-500/10 p-6 rounded-full animate-pulse">
+                    <Lock className="h-16 w-16 text-rose-600" />
+                  </div>
+                  <div className="absolute -top-1 -right-1 bg-rose-600 text-white p-1 rounded-full border-2 border-white">
+                    <ShieldAlert className="h-4 w-4" />
+                  </div>
+                </div>
+                
+                <h2 className="text-3xl font-black text-slate-900 tracking-tight italic uppercase mb-2">Access Denied</h2>
+                <p className="text-slate-500 font-bold text-xs uppercase tracking-widest mb-8 text-center max-w-md">
+                  You do not have permissions to view this section. Please contact your system administrator to request access.
+                </p>
+                
+                <div className="flex gap-4">
+                  <Button 
+                    onClick={() => router.push('/')}
+                    className="h-12 px-6 font-black uppercase text-xs tracking-widest rounded-xl bg-slate-900 hover:bg-primary transition-all shadow-xl"
+                  >
+                    <ArrowLeftRight className="mr-2 h-4 w-4" /> Back to Dashboard
+                  </Button>
+                  <Button 
+                    onClick={logout}
+                    variant="outline"
+                    className="h-12 px-6 font-black uppercase text-xs tracking-widest rounded-xl border-rose-200 text-rose-600 hover:bg-rose-50 transition-all shadow-xl"
+                  >
+                    <LogOut className="mr-2 h-4 w-4" /> Logout
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </main>
       </div>
