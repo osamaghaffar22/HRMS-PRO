@@ -11,3 +11,5 @@ pandas
 openpyxl
 python-dotenv
 alembic
+
+psycopg2-binary

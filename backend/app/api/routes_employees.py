@@ -78,6 +78,7 @@ def get_employees(
     sort_by: Optional[str] = None,
     sort_order: Optional[str] = None,
     hr_pool_only: Optional[bool] = False,
+    limit: Optional[int] = 5000,
     db: Session = Depends(get_db),
     current_user=Depends(PermissionChecker(["employees", "reports", "transfers", "leaves", "acr", "custom"]))
 ):
@@ -128,6 +129,8 @@ def get_employees(
     else:
         query = query.order_by(cast(models.Employee.s_no, Integer).asc(), cast(models.Employee.bs, Integer).desc(), models.Employee.id.asc())
 
+    if limit and limit > 0:
+        query = query.limit(limit)
     return query.all()
 
 @router.get("/{emp_id}", response_model=schemas.Employee)
@@ -295,4 +298,6 @@ def get_extra_employees(
         cast(models.Employee.bs, Integer).desc(),
         models.Employee.id.asc()
     )
+    if limit and limit > 0:
+        query = query.limit(limit)
     return query.all()
