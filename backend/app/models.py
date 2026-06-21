@@ -75,6 +75,8 @@ class Employee(Base):
     temp_address = Column(Text)
     perm_address = Column(Text)
     post_status = Column(String, index=True)
+    employment_status = Column(String, default="Active", index=True)
+    separation_date = Column(String, default=None)
     reports = relationship("ACRReport", backref="employee")
 
 class CustomModule(Base):

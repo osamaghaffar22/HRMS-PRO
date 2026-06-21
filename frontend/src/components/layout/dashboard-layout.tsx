@@ -38,6 +38,8 @@ const navItems = [
   { label: 'Leave Management', icon: CalendarDays, href: '/leaves' },
   { label: 'File Tracking', icon: Settings, href: '/files' },
   { label: 'Reports', icon: FileSpreadsheet, href: '/reports' },
+  { label: 'Rejections', icon: ShieldAlert, href: '/rejections' },
+  { label: 'Extra', icon: ShieldAlert, href: '/extra' },
   { label: 'Custom Modules', icon: Settings, href: '/custom' },
 ];
 
@@ -59,6 +61,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     '/leaves': 'leaves',
     '/files': 'files',
     '/reports': 'reports',
+    '/rejections': 'employees',
+    '/extra': 'employees',
     '/custom': 'custom',
   };
 

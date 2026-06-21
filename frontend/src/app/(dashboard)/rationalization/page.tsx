@@ -252,7 +252,7 @@ export default function RationalizationPage() {
                             isFull ? 'bg-amber-500/10 text-amber-600 border border-amber-500/20' : 
                             'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
                           }>
-                            {isOver ? 'OVER-POSTED' : isFull ? 'QUOTA FULL' : `${q.vacant} VACANT`}
+                            {isOver ? `+${q.current_count - q.allocated_posts} EXCESS` : isFull ? 'QUOTA FULL' : `${q.vacant} VACANT`}
                           </Badge>
                         </TableCell>
                         {canEdit && (

@@ -80,6 +80,8 @@ class EmployeeBase(BaseModel):
     order_number: Optional[str] = None
     order_date: Optional[str] = None
     relieving_date: Optional[str] = None
+    employment_status: Optional[str] = "Active"
+    separation_date: Optional[str] = None
 
 class EmployeeCreate(EmployeeBase):
     pass
@@ -87,6 +89,10 @@ class EmployeeCreate(EmployeeBase):
 class Employee(EmployeeBase):
     id: int
     model_config = ConfigDict(from_attributes=True)
+
+class EmployeeDiscrepancy(BaseModel):
+    employee: Employee
+    issues: List[str]
 
 # --- Transfer ---
 class TransferHistoryBase(BaseModel):

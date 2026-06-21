@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { 
   Table, 
@@ -518,7 +518,9 @@ function EmployeesContent() {
   const { user } = useAuthStore();
   const canEdit = user?.role === 'Admin' || user?.permissions?.employees_form === true;
   const searchParams = useSearchParams();
+  const router = useRouter();
   const highlightId = searchParams.get('highlight');
+  const editId = searchParams.get('editId');
 
   const [editingEmp, setEditingEmp] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("personal");
@@ -604,6 +606,25 @@ function EmployeesContent() {
       return res.data;
     }
   });
+
+  useEffect(() => {
+    if (editId && employees) {
+      const emp = employees.find((e: any) => e.id.toString() === editId);
+      if (emp && !editingEmp) {
+        setEditingEmp(emp);
+        const newParams = new URLSearchParams(window.location.search);
+        newParams.delete('editId');
+        router.replace(`${window.location.pathname}?${newParams.toString()}`, { scroll: false });
+      } else if (!emp && !editingEmp) {
+        api.get(`/api/employees/${editId}`).then(res => {
+          setEditingEmp(res.data);
+          const newParams = new URLSearchParams(window.location.search);
+          newParams.delete('editId');
+          router.replace(`${window.location.pathname}?${newParams.toString()}`, { scroll: false });
+        }).catch(() => {});
+      }
+    }
+  }, [editId, employees, editingEmp, router]);
 
   const updateEmpMutation = useMutation({
     mutationFn: (data: { id: number; data: any }) => api.put(`/api/employees/${data.id}`, data.data),

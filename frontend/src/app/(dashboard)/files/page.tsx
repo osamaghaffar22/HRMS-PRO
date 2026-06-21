@@ -46,7 +46,7 @@ export default function FileTrackingPage() {
     put_up_date: new Date().toISOString().split('T')[0],
     mark_branch: '',
     receiver_name: '',
-    receiving_date: '',
+    receiving_date: new Date().toISOString().split('T')[0],
     return_date: '',
     status: 'In Progress'
   });
@@ -159,7 +159,7 @@ export default function FileTrackingPage() {
           put_up_date: file.put_up_date || '',
           mark_branch: file.mark_branch || '',
           receiver_name: file.receiver_name || '',
-          receiving_date: file.receiving_date || '',
+          receiving_date: file.receiving_date || new Date().toISOString().split('T')[0],
           return_date: today,
           status: 'Closed'
         } 
@@ -178,7 +178,7 @@ export default function FileTrackingPage() {
       put_up_date: new Date().toISOString().split('T')[0],
       mark_branch: '',
       receiver_name: '',
-      receiving_date: '',
+      receiving_date: new Date().toISOString().split('T')[0],
       return_date: '',
       status: 'In Progress'
     });
@@ -195,7 +195,7 @@ export default function FileTrackingPage() {
       put_up_date: file.put_up_date || '',
       mark_branch: file.mark_branch || '',
       receiver_name: file.receiver_name || '',
-      receiving_date: file.receiving_date || '',
+      receiving_date: file.receiving_date || new Date().toISOString().split('T')[0],
       return_date: file.return_date || '',
       status: file.status || 'In Progress'
     });
@@ -204,6 +204,12 @@ export default function FileTrackingPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const requiredFields = ['file_name', 'case_subject', 'reason', 'put_up', 'put_up_date', 'mark_branch', 'receiver_name', 'receiving_date'];
+    const missing = requiredFields.filter(f => !formData[f as keyof typeof formData]);
+    if (missing.length > 0) {
+      alert("Please fill all required fields before saving. Only Return Date is optional.");
+      return;
+    }
     if (editingFile) {
       updateMutation.mutate({ id: editingFile.id, updates: formData });
     } else {
@@ -310,6 +316,26 @@ export default function FileTrackingPage() {
       styles: { fontSize: 8 }
     });
     doc.save(`File_Tracking_${new Date().getTime()}.pdf`);
+  };
+
+  
+  const getDaysAgoInfo = (dateStr: string, status: string) => {
+    if (!dateStr) return { text: '—', isRed: false };
+    if (['Closed', 'Completed', 'Returned'].includes(status)) return { text: '—', isRed: false };
+    
+    const putUpDate = new Date(dateStr);
+    putUpDate.setHours(0,0,0,0);
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    
+    const diffTime = today.getTime() - putUpDate.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return { text: 'Today', isRed: false };
+    if (diffDays === 1) return { text: '1 day ago', isRed: false };
+    if (diffDays < 0) return { text: '—', isRed: false };
+    
+    return { text: `${diffDays} days ago`, isRed: diffDays >= 2 };
   };
 
   return (
@@ -449,7 +475,7 @@ export default function FileTrackingPage() {
 
                     <div className="col-span-2 space-y-1.5">
                       <Label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Reason / Case</Label>
-                      <Input value={formData.reason} onChange={e => setFormData({...formData, reason: e.target.value})} className="h-10 border-none shadow-inner bg-slate-100 focus-visible:ring-primary/20 uppercase font-bold text-xs" placeholder="Reason for the file..." />
+                      <Input required value={formData.reason} onChange={e => setFormData({...formData, reason: e.target.value})} className="h-10 border-none shadow-inner bg-slate-100 focus-visible:ring-primary/20 uppercase font-bold text-xs" placeholder="Reason for the file..." />
                     </div>
 
                     <div className="space-y-1.5">
@@ -464,7 +490,7 @@ export default function FileTrackingPage() {
 
                     <div className="space-y-1.5">
                       <Label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Put Up Date</Label>
-                      <Input type="date" value={formData.put_up_date} onChange={e => setFormData({...formData, put_up_date: e.target.value})} className="h-10 border-none shadow-inner bg-slate-100 focus-visible:ring-primary/20 font-bold text-xs" />
+                      <Input required type="date" value={formData.put_up_date} onChange={e => setFormData({...formData, put_up_date: e.target.value})} className="h-10 border-none shadow-inner bg-slate-100 focus-visible:ring-primary/20 font-bold text-xs" />
                     </div>
                     
                     <div className="space-y-1.5">
@@ -479,11 +505,11 @@ export default function FileTrackingPage() {
 
                     <div className="space-y-1.5">
                       <Label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Receiver Name</Label>
-                      <Input value={formData.receiver_name} onChange={e => setFormData({...formData, receiver_name: e.target.value})} className="h-10 border-none shadow-inner bg-slate-100 focus-visible:ring-primary/20 uppercase font-bold text-xs" placeholder="Who received it" />
+                      <Input required value={formData.receiver_name} onChange={e => setFormData({...formData, receiver_name: e.target.value})} className="h-10 border-none shadow-inner bg-slate-100 focus-visible:ring-primary/20 uppercase font-bold text-xs" placeholder="Who received it" />
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Receiving Date</Label>
-                      <Input type="date" value={formData.receiving_date} onChange={e => setFormData({...formData, receiving_date: e.target.value})} className="h-10 border-none shadow-inner bg-slate-100 focus-visible:ring-primary/20 font-bold text-xs" />
+                      <Input required type="date" value={formData.receiving_date} onChange={e => setFormData({...formData, receiving_date: e.target.value})} className="h-10 border-none shadow-inner bg-slate-100 focus-visible:ring-primary/20 font-bold text-xs" />
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Return Date</Label>
@@ -522,6 +548,7 @@ export default function FileTrackingPage() {
                 <TableHead className="w-48 text-white font-black text-[12px] uppercase p-3">Reason / Case</TableHead>
                 <TableHead className="w-40 text-white font-black text-[12px] uppercase p-3">Put Up</TableHead>
                 <TableHead className="w-32 text-white font-black text-[12px] uppercase p-3 text-center">Put Up Date</TableHead>
+                <TableHead className="w-32 text-white font-black text-[12px] uppercase p-3 text-center">Days Ago</TableHead>
                 <TableHead className="w-40 text-white font-black text-[12px] uppercase p-3">Mark Branch</TableHead>
                 <TableHead className="w-40 text-white font-black text-[12px] uppercase p-3">Receiver Name</TableHead>
                 <TableHead className="w-32 text-white font-black text-[12px] uppercase p-3 text-center">Rcv. Date</TableHead>
@@ -532,9 +559,9 @@ export default function FileTrackingPage() {
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={12} className="py-10 text-center text-slate-500 font-semibold">Loading data...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={13} className="py-10 text-center text-slate-500 font-semibold">Loading data...</TableCell></TableRow>
               ) : filteredFiles?.length === 0 ? (
-                <TableRow><TableCell colSpan={12} className="py-20 text-center text-slate-400 font-black uppercase text-xs italic tracking-widest">{isHistoryView ? 'No closed files found in history' : 'No active files found'}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={13} className="py-20 text-center text-slate-400 font-black uppercase text-xs italic tracking-widest">{isHistoryView ? 'No closed files found in history' : 'No active files found'}</TableCell></TableRow>
               ) : (
                 filteredFiles?.map((f: any, i: number) => (
                   <TableRow key={f.id} className="transition-colors border-b border-slate-100 hover:bg-slate-50/80">
@@ -544,6 +571,7 @@ export default function FileTrackingPage() {
                     <TableCell className="p-3 text-[11px] font-bold text-slate-600 uppercase whitespace-normal break-words max-w-[200px]">{f.reason || '—'}</TableCell>
                     <TableCell className="p-3 text-[11px] font-bold text-slate-600 uppercase">{f.put_up || '—'}</TableCell>
                     <TableCell className="p-3 text-[11px] font-bold text-primary text-center bg-primary/5">{formatDate(f.put_up_date)}</TableCell>
+                    <TableCell className={cn("p-3 text-[11px] font-black text-center whitespace-nowrap transition-colors", getDaysAgoInfo(f.put_up_date, f.status).isRed ? "text-white bg-rose-500 animate-pulse" : "text-slate-500")}>{getDaysAgoInfo(f.put_up_date, f.status).text}</TableCell>
                     <TableCell className="p-3 text-[11px] font-bold text-slate-600 uppercase">{f.mark_branch || '—'}</TableCell>
                     <TableCell className="p-3 text-[11px] font-bold text-slate-600 uppercase">{f.receiver_name || '—'}</TableCell>
                     <TableCell className="p-3 text-[11px] font-bold text-emerald-600 text-center bg-emerald-50/50">{formatDate(f.receiving_date)}</TableCell>

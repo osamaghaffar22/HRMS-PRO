@@ -50,18 +50,8 @@ def create_transfer(
 
     # Rationalization Check
     if new_off and new_off != emp.branch_office:
-        quota = db.query(models.Rationalization).filter(
-            models.Rationalization.branch_office == new_off,
-            models.Rationalization.post_name == emp.post_name
-        ).first()
-        if quota and quota.allocated_posts > 0:
-            current_count = db.query(models.Employee).filter(
-                models.Employee.branch_office == new_off,
-                models.Employee.post_name == emp.post_name,
-                models.Employee.id != emp.id
-            ).count()
-            if current_count >= quota.allocated_posts:
-                raise HTTPException(status_code=400, detail=f"Transfer blocked: The seat quota of {quota.allocated_posts} for '{emp.post_name}' in '{new_off}' is already full.")
+        # We no longer block transfers when quota is full. The UI will indicate the excess count instead.
+        pass
 
 
     prev_stint = models.TransferHistory(
