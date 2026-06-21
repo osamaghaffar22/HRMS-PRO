@@ -1,10 +1,11 @@
 import os
-from sqlalchemy import create_engine, inspect, MetaData
+from sqlalchemy import create_engine, MetaData
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
-from app.db.database import Base
+from app.models import Base
+import app.models
 
-load_dotenv(os.path.join(os.path.dirname(__file__), '../../.env'))
+load_dotenv(os.path.join(os.path.dirname(__file__), '../.env'))
 
 # Source Database (SQLite)
 SQLITE_URL = "sqlite:///../hrms_v2.db"
@@ -13,60 +14,70 @@ SqliteSession = sessionmaker(bind=sqlite_engine)
 sqlite_session = SqliteSession()
 
 # Target Database (PostgreSQL)
-# User should add PG_DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/hrms_db to .env
 PG_URL = os.getenv("PG_DATABASE_URL")
 
 if not PG_URL:
     print("ERROR: PG_DATABASE_URL is missing in .env file.")
-    print("Please add: PG_DATABASE_URL=postgresql://postgres:yourpassword@localhost:5432/hrms_db")
     exit(1)
 
 try:
     pg_engine = create_engine(PG_URL)
-    # Check connection
-    pg_engine.connect()
+    with pg_engine.connect() as _:
+        pass
 except Exception as e:
     print(f"ERROR: Could not connect to PostgreSQL database: {e}")
-    print("Please make sure PostgreSQL is installed, running, and the credentials in PG_DATABASE_URL are correct.")
     exit(1)
-
-PgSession = sessionmaker(bind=pg_engine)
-pg_session = PgSession()
 
 print("Connection to both databases successful!")
 
-# Create all tables in PostgreSQL
+print("Dropping existing tables in PostgreSQL to start fresh...")
+Base.metadata.drop_all(bind=pg_engine)
 print("Creating tables in PostgreSQL...")
 Base.metadata.create_all(bind=pg_engine)
 
-# Reflect the tables from SQLite
-metadata = MetaData()
-metadata.reflect(bind=sqlite_engine)
+# Reflect the tables from both databases
+sqlite_metadata = MetaData()
+sqlite_metadata.reflect(bind=sqlite_engine)
 
-# Migrate data table by table
-for table_name in metadata.tables.keys():
+pg_metadata = MetaData()
+pg_metadata.reflect(bind=pg_engine)
+
+# Migrate data table by table in topological sorted order (Foreign Key safe)
+for sqlite_table in sqlite_metadata.sorted_tables:
+    table_name = sqlite_table.name
     print(f"Migrating table: {table_name}...")
-    table = metadata.tables[table_name]
+    
+    # Check if table exists in PG
+    if table_name not in pg_metadata.tables:
+        print(f" - Warning: {table_name} does not exist in PostgreSQL. Skipping.")
+        continue
+        
+    pg_table = pg_metadata.tables[table_name]
+    valid_columns = [col.name for col in pg_table.columns]
     
     # Read data from SQLite
-    rows = sqlite_session.execute(table.select()).fetchall()
+    rows = sqlite_session.execute(sqlite_table.select()).fetchall()
     if not rows:
         print(f" - {table_name} is empty, skipping.")
         continue
         
     print(f" - Found {len(rows)} records. Inserting into PostgreSQL...")
     
-    # We must construct a dictionary of insert values for each row
-    columns = [col.name for col in table.columns]
-    insert_data = [dict(zip(columns, row)) for row in rows]
+    columns = [col.name for col in sqlite_table.columns]
+    insert_data = []
     
-    # Insert in batches to avoid memory overload
+    for row in rows:
+        row_dict = dict(zip(columns, row))
+        filtered_dict = {k: v for k, v in row_dict.items() if k in valid_columns}
+        insert_data.append(filtered_dict)
+    
+    # Insert in batches
     batch_size = 1000
     for i in range(0, len(insert_data), batch_size):
         batch = insert_data[i:i+batch_size]
-        pg_engine.execute(table.insert().values(batch))
+        with pg_engine.begin() as conn:
+            conn.execute(pg_table.insert().values(batch))
         
     print(f" - Successfully migrated {table_name}")
 
 print("\nMigration Completed Successfully!")
-print("You can now update your DATABASE_URL in .env to point to PostgreSQL.")

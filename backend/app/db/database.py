@@ -25,7 +25,7 @@ else:
 
 @event.listens_for(Engine, "connect")
 def set_sqlite_pragma(dbapi_connection, connection_record):
-    if DATABASE_URL.startswith("sqlite"):
+    if type(dbapi_connection).__name__ == "Connection" and "sqlite3" in str(type(dbapi_connection)):
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA journal_mode=WAL")
         cursor.execute("PRAGMA synchronous=NORMAL")
