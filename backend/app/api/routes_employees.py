@@ -78,7 +78,7 @@ def get_employees(
     sort_by: Optional[str] = None,
     sort_order: Optional[str] = None,
     hr_pool_only: Optional[bool] = False,
-    limit: Optional[int] = 5000,
+    limit: Optional[int] = 500,
     db: Session = Depends(get_db),
     current_user=Depends(PermissionChecker(["employees", "reports", "transfers", "leaves", "acr", "custom"]))
 ):

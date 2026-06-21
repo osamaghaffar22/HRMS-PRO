@@ -59,7 +59,7 @@ def get_acr_records(
         ))
 
     query = query.order_by(cast(models.Employee.s_no, Integer).asc(), cast(models.Employee.bs, Integer).desc(), models.Employee.id.asc())
-    employees = query.all()
+    employees = query.limit(500).all()
     
     result = []
     for emp in employees:
