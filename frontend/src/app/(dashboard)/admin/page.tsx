@@ -210,7 +210,7 @@ export default function AdminPage() {
           <p className="text-slate-500 font-bold text-[10px] uppercase tracking-[0.4em] mt-1 opacity-70">Define access rights for officials</p>
         </div>
         <Button 
-          className="h-12 px-6 font-black uppercase text-xs tracking-widest rounded-xl shadow-2xl bg-slate-900 hover:bg-primary transition-all group"
+          className="h-12 px-6 font-black uppercase text-xs tracking-widest rounded-xl shadow-2xl bg-[#405189] hover:bg-primary transition-all group"
           onClick={() => setShowCreateDialog(true)}
         >
           <Plus className="mr-2 h-4 w-4 group-hover:rotate-90 transition-transform" />
@@ -219,9 +219,9 @@ export default function AdminPage() {
       </div>
 
       <Card className="border-none shadow-2xl bg-white rounded-3xl overflow-hidden border border-slate-100 min-h-[400px]">
-        <CardHeader className="bg-slate-900 text-white p-6">
-          <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] flex items-center italic">
-            <ShieldCheck className="h-4 w-4 mr-3 text-primary" /> Active Personnel Credentials
+        <CardHeader className="bg-[#405189] text-white p-6">
+          <CardTitle className="text-lg font-black uppercase text-white tracking-[0.2em] flex items-center italic">
+            <ShieldCheck className="h-5 w-5 mr-3 text-white" /> Active Personnel Credentials
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
@@ -234,14 +234,14 @@ export default function AdminPage() {
           ) : (
             <div className="overflow-x-auto">
               <Table>
-                <TableHeader className="bg-slate-50">
+                <TableHeader className="bg-[#405189]">
                   <TableRow className="h-12 border-none">
-                    <TableHead className="font-black text-slate-700 text-[10px] uppercase p-4">Full Name</TableHead>
-                    <TableHead className="font-black text-slate-700 text-[10px] uppercase p-4 text-center">Username</TableHead>
-                    <TableHead className="font-black text-slate-700 text-[10px] uppercase p-4 text-center">Role</TableHead>
-                    <TableHead className="font-black text-slate-700 text-[10px] uppercase p-4 text-center">Status</TableHead>
-                    <TableHead className="font-black text-slate-700 text-[10px] uppercase p-4">Permitted Modules / Sections</TableHead>
-                    <TableHead className="text-right text-slate-700 font-black text-[10px] uppercase p-4 whitespace-nowrap">Actions</TableHead>
+                    <TableHead className="font-black text-white text-[11px] uppercase p-4">Full Name</TableHead>
+                    <TableHead className="font-black text-white text-[11px] uppercase p-4 text-center">Username</TableHead>
+                    <TableHead className="font-black text-white text-[11px] uppercase p-4 text-center">Role</TableHead>
+                    <TableHead className="font-black text-white text-[11px] uppercase p-4 text-center">Status</TableHead>
+                    <TableHead className="font-black text-white text-[11px] uppercase p-4">Permitted Modules / Sections</TableHead>
+                    <TableHead className="text-right text-white font-black text-[11px] uppercase p-4 whitespace-nowrap">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -313,7 +313,7 @@ export default function AdminPage() {
       {/* CREATE USER DIALOG */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent className="sm:max-w-lg bg-white rounded-3xl border-none shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
-          <DialogHeader className="bg-slate-900 p-6 -m-6 mb-6 rounded-t-3xl text-white">
+          <DialogHeader className="bg-[#405189] p-6 -m-6 mb-6 rounded-t-3xl text-white">
             <DialogTitle className="font-black uppercase tracking-widest text-sm flex items-center">
               <User className="h-5 w-5 mr-3 text-primary" /> Create Official Account
             </DialogTitle>
@@ -325,18 +325,18 @@ export default function AdminPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Full Name *</Label>
-                <Input className="h-12 bg-slate-50 border-none font-bold text-xs rounded-xl shadow-inner uppercase" value={newName} onChange={e => setNewName(e.target.value)} required />
+                <Input className="border-slate-200/50 h-12 bg-slate-50 border-none font-bold text-xs rounded-xl shadow-inner uppercase" value={newName} onChange={e => setNewName(e.target.value)} required />
               </div>
               <div className="space-y-2">
                 <Label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Username *</Label>
-                <Input className="h-12 bg-slate-50 border-none font-bold text-xs rounded-xl shadow-inner" value={newUsername} onChange={e => setNewUsername(e.target.value.toLowerCase().replace(/\s+/g, ''))} required />
+                <Input className="border-slate-200/50 h-12 bg-slate-50 border-none font-bold text-xs rounded-xl shadow-inner" value={newUsername} onChange={e => setNewUsername(e.target.value.toLowerCase().replace(/\s+/g, ''))} required />
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Password *</Label>
-                <Input type="password" className="h-12 bg-slate-50 border-none font-bold text-xs rounded-xl shadow-inner" value={newPassword} onChange={e => setNewPassword(e.target.value)} required />
+                <Input type="password" className="border-slate-200/50 h-12 bg-slate-50 border-none font-bold text-xs rounded-xl shadow-inner" value={newPassword} onChange={e => setNewPassword(e.target.value)} required />
               </div>
               <div className="space-y-2">
                 <Label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">System Role *</Label>
@@ -373,7 +373,7 @@ export default function AdminPage() {
 
             <DialogFooter className="mt-8 pt-4 border-t gap-2">
               <Button type="button" variant="ghost" onClick={() => setShowCreateDialog(false)} className="h-12 uppercase text-[10px] font-black tracking-widest text-slate-500">Cancel</Button>
-              <Button type="submit" className="h-12 px-8 uppercase text-[10px] font-black tracking-widest rounded-xl bg-slate-900 hover:bg-primary shadow-xl">
+              <Button type="submit" className="h-12 px-8 uppercase text-[10px] font-black tracking-widest rounded-xl bg-[#405189] hover:bg-primary shadow-xl">
                 Create Account
               </Button>
             </DialogFooter>
@@ -384,7 +384,7 @@ export default function AdminPage() {
       {/* EDIT USER DIALOG */}
       <Dialog open={!!editingUser} onOpenChange={open => !open && setEditingUser(null)}>
         <DialogContent className="sm:max-w-lg bg-white rounded-3xl border-none shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
-          <DialogHeader className="bg-slate-900 p-6 -m-6 mb-6 rounded-t-3xl text-white">
+          <DialogHeader className="bg-[#405189] p-6 -m-6 mb-6 rounded-t-3xl text-white">
             <DialogTitle className="font-black uppercase tracking-widest text-sm flex items-center">
               <Edit2 className="h-5 w-5 mr-3 text-primary" /> Modify Personnel Credentials
             </DialogTitle>
@@ -396,11 +396,11 @@ export default function AdminPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Full Name *</Label>
-                <Input className="h-12 bg-slate-50 border-none font-bold text-xs rounded-xl shadow-inner uppercase" value={editName} onChange={e => setEditName(e.target.value)} required />
+                <Input className="border-slate-200/50 h-12 bg-slate-50 border-none font-bold text-xs rounded-xl shadow-inner uppercase" value={editName} onChange={e => setEditName(e.target.value)} required />
               </div>
               <div className="space-y-2">
                 <Label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Username *</Label>
-                <Input className="h-12 bg-slate-50 border-none font-bold text-xs rounded-xl shadow-inner" value={editUsername} onChange={e => setEditUsername(e.target.value.toLowerCase().replace(/\s+/g, ''))} required disabled={editingUser?.username === 'admin'} />
+                <Input className="border-slate-200/50 h-12 bg-slate-50 border-none font-bold text-xs rounded-xl shadow-inner" value={editUsername} onChange={e => setEditUsername(e.target.value.toLowerCase().replace(/\s+/g, ''))} required disabled={editingUser?.username === 'admin'} />
               </div>
             </div>
 
@@ -410,7 +410,7 @@ export default function AdminPage() {
                   <Label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">New Password</Label>
                   <span className="text-[8px] font-bold text-amber-500 uppercase tracking-tight">Leave blank to keep same</span>
                 </div>
-                <Input type="password" placeholder="••••••••" className="h-12 bg-slate-50 border-none font-bold text-xs rounded-xl shadow-inner" value={editPassword} onChange={e => setEditPassword(e.target.value)} />
+                <Input type="password" placeholder="••••••••" className="border-slate-200/50 h-12 bg-slate-50 border-none font-bold text-xs rounded-xl shadow-inner" value={editPassword} onChange={e => setEditPassword(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">System Role *</Label>
@@ -460,7 +460,7 @@ export default function AdminPage() {
 
             <DialogFooter className="mt-8 pt-4 border-t gap-2">
               <Button type="button" variant="ghost" onClick={() => setEditingUser(null)} className="h-12 uppercase text-[10px] font-black tracking-widest text-slate-500">Cancel</Button>
-              <Button type="submit" className="h-12 px-8 uppercase text-[10px] font-black tracking-widest rounded-xl bg-slate-900 hover:bg-primary shadow-xl">
+              <Button type="submit" className="h-12 px-8 uppercase text-[10px] font-black tracking-widest rounded-xl bg-[#405189] hover:bg-primary shadow-xl">
                 Save Changes
               </Button>
             </DialogFooter>

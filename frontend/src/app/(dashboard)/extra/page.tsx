@@ -94,8 +94,8 @@ export default function ExtraPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Separation Form */}
         <Card className="lg:col-span-1 shadow-xl rounded-3xl border-slate-100 h-fit bg-white border">
-          <CardHeader className="bg-slate-50 rounded-t-3xl border-b border-slate-100 pb-4">
-            <CardTitle className="text-sm font-black uppercase text-slate-700">Process Separation</CardTitle>
+          <CardHeader className="bg-[#405189] rounded-t-3xl border-b border-[#405189] py-4 flex items-center justify-center">
+            <CardTitle className="text-base font-black uppercase text-white tracking-widest">Process Separation</CardTitle>
           </CardHeader>
           <CardContent className="pt-6 space-y-6">
             
@@ -106,7 +106,7 @@ export default function ExtraPage() {
                 <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
                 <Input 
                   placeholder="Type name or CNIC..." 
-                  className="pl-9 bg-slate-50 border-slate-200 h-10 font-medium"
+                  className="pl-9 bg-slate-50 border-slate-200/50 h-10 font-medium"
                   value={searchTerm}
                   onChange={(e) => {
                     setSearchTerm(e.target.value);
@@ -160,10 +160,10 @@ export default function ExtraPage() {
 
             {/* Action Dropdown and Date */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase">Separation Reason</label>
+              <div className="space-y-3">
+                <label className="text-xs font-black text-[#405189] uppercase tracking-wide">Separation Reason</label>
                 <Select value={separationType} onValueChange={setSeparationType}>
-                  <SelectTrigger className="w-full h-10 bg-slate-50">
+                  <SelectTrigger className="border-slate-200/50 w-full h-10 bg-slate-50">
                     <SelectValue placeholder="Select Reason..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -176,8 +176,8 @@ export default function ExtraPage() {
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase">Separation Date</label>
+              <div className="space-y-3">
+                <label className="text-xs font-black text-[#405189] uppercase tracking-wide">Separation Date</label>
                 <Input 
                   type="date" 
                   value={separationDate} 
@@ -188,7 +188,7 @@ export default function ExtraPage() {
             </div>
 
             <Button 
-              className="w-full h-10 font-black uppercase tracking-wider bg-slate-900 hover:bg-slate-800"
+              className="w-full h-10 font-black uppercase tracking-wider bg-[#405189] hover:bg-[#405189]"
               disabled={!selectedEmployee || !separationType || separateMutation.isPending}
               onClick={handleSeparate}
             >
@@ -202,20 +202,20 @@ export default function ExtraPage() {
 
         {/* Extra Employees List */}
         <Card className="lg:col-span-2 shadow-xl rounded-3xl border-slate-100 bg-white border overflow-hidden">
-          <div className="p-5 bg-slate-900 flex justify-between items-center">
+          <div className="p-5 bg-[#405189] flex justify-between items-center">
             <h2 className="text-sm font-black uppercase tracking-widest text-white">Separated Personnel Registry</h2>
-            <Badge className="bg-slate-800 text-slate-300 border-none uppercase text-[10px]">
+            <Badge className="bg-[#405189] text-slate-300 border-none uppercase text-[10px]">
               {extraEmployees?.length || 0} Records
             </Badge>
           </div>
           <Table className="table-fixed w-full">
             <TableHeader className="bg-slate-50 border-b border-slate-200">
               <TableRow className="border-none h-12">
-                <TableHead className="w-[25%] text-slate-500 font-black text-[10px] uppercase p-3">Name</TableHead>
-                <TableHead className="w-[30%] text-slate-500 font-black text-[10px] uppercase p-3">Last Designation & Office</TableHead>
-                <TableHead className="w-[20%] text-slate-500 font-black text-[10px] uppercase p-3 text-center">Date</TableHead>
-                <TableHead className="w-[20%] text-slate-500 font-black text-[10px] uppercase p-3 text-center">Status / Reason</TableHead>
-                <TableHead className="w-[5%] text-slate-500 font-black text-[10px] uppercase p-3 text-center"></TableHead>
+                <TableHead className="w-[25%] text-white font-black text-[10px] uppercase p-3">Name</TableHead>
+                <TableHead className="w-[30%] text-white font-black text-[10px] uppercase p-3">Last Designation & Office</TableHead>
+                <TableHead className="w-[20%] text-white font-black text-[10px] uppercase p-3 text-center">Date</TableHead>
+                <TableHead className="w-[20%] text-white font-black text-[10px] uppercase p-3 text-center">Status / Reason</TableHead>
+                <TableHead className="w-[5%] text-white font-black text-[10px] uppercase p-3 text-center"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

@@ -349,7 +349,7 @@ export default function FileTrackingPage() {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300 group-focus-within:text-primary transition-colors" />
           <Input 
             placeholder="SEARCH FILES, SUBJECTS, OR RECEIVERS..." 
-            className="h-12 pl-12 bg-white border-none shadow-sm text-[16px] font-bold uppercase tracking-tight placeholder:text-slate-200 focus-visible:ring-1 focus-visible:ring-primary rounded-xl transition-all" 
+            className="border-slate-200/50 h-12 pl-12 bg-white border-none shadow-sm text-[16px] font-bold uppercase tracking-tight placeholder:text-slate-200 focus-visible:ring-1 focus-visible:ring-primary rounded-xl transition-all" 
             value={search} 
             onChange={(e) => setSearch(e.target.value)} 
           />
@@ -410,7 +410,7 @@ export default function FileTrackingPage() {
               className={cn(
                 "h-9 font-black text-[11px] uppercase tracking-widest px-5 rounded-lg shadow-sm transition-all border",
                 isHistoryView 
-                  ? "bg-slate-800 text-white hover:bg-slate-700 border-slate-800" 
+                  ? "bg-[#405189] text-white hover:bg-slate-700 border-slate-800" 
                   : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
               )}
               onClick={() => setIsHistoryView(!isHistoryView)}
@@ -540,8 +540,8 @@ export default function FileTrackingPage() {
       <Card className="border-none shadow-2xl overflow-hidden bg-white rounded-3xl border border-slate-100">
         <div className="w-full overflow-x-auto">
           <Table className="w-full">
-            <TableHeader className="bg-slate-900">
-              <TableRow className="hover:bg-slate-900 border-none h-14">
+            <TableHeader className="bg-[#405189]">
+              <TableRow className="hover:bg-[#405189] border-none h-14">
                 <TableHead className="w-12 text-white font-black text-[12px] uppercase p-3 text-center">S.No</TableHead>
                 <TableHead className="w-40 text-white font-black text-[12px] uppercase p-3">File Name</TableHead>
                 <TableHead className="w-48 text-white font-black text-[12px] uppercase p-3">Case / Subject</TableHead>
@@ -554,7 +554,7 @@ export default function FileTrackingPage() {
                 <TableHead className="w-32 text-white font-black text-[12px] uppercase p-3 text-center">Rcv. Date</TableHead>
                 <TableHead className="w-32 text-white font-black text-[12px] uppercase p-3 text-center">Return Date</TableHead>
                 <TableHead className="w-32 text-white font-black text-[12px] uppercase p-3 text-center">Status</TableHead>
-                <TableHead className="w-24 text-center text-white font-black text-[12px] uppercase p-3 sticky right-0 bg-slate-900">Actions</TableHead>
+                <TableHead className="w-24 text-center text-white font-black text-[12px] uppercase p-3 sticky right-0 bg-[#405189]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

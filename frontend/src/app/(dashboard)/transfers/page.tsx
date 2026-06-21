@@ -190,7 +190,7 @@ export default function TransfersPage() {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300 group-focus-within:text-primary transition-colors" />
             <Input 
                 placeholder="SEARCH HISTORY PERSONNEL..." 
-                className="h-12 pl-12 bg-white border-none shadow-sm text-[16px] font-bold uppercase tracking-tight placeholder:text-slate-200 focus-visible:ring-1 focus-visible:ring-primary rounded-xl transition-all" 
+                className="border-slate-200/50 h-12 pl-12 bg-white border-none shadow-sm text-[16px] font-bold uppercase tracking-tight placeholder:text-slate-200 focus-visible:ring-1 focus-visible:ring-primary rounded-xl transition-all" 
                 value={historySearch} 
                 onChange={(e) => setHistorySearch(e.target.value)} 
             />
@@ -205,8 +205,8 @@ export default function TransfersPage() {
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
         <Card className="xl:col-span-4 border-none shadow-2xl bg-white rounded-3xl border border-slate-100 print:hidden">
-          <CardHeader className="bg-slate-900 text-white p-8 rounded-t-3xl">
-            <CardTitle className="text-lg font-black uppercase tracking-widest flex items-center italic text-primary"><Clock className="h-5 w-5 mr-3" /> New Deployment</CardTitle>
+          <CardHeader className="bg-[#405189] text-white p-8 rounded-t-3xl">
+            <CardTitle className="text-lg font-black uppercase tracking-widest flex items-center italic text-white"><Clock className="h-5 w-5 mr-3" /> New Deployment</CardTitle>
           </CardHeader>
           <CardContent className="p-8 space-y-8">
               {/* Employee Search */}
@@ -216,7 +216,7 @@ export default function TransfersPage() {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <Input 
                     placeholder="Search by name, code or cnic..." 
-                    className="pl-10 h-12 bg-slate-50 border-none font-bold text-xs"
+                    className="border-slate-200/50 pl-10 h-12 bg-slate-50 border-none font-bold text-xs"
                     value={empSearch}
                     onChange={(e) => setEmpSearch(e.target.value)}
                   />
@@ -247,32 +247,32 @@ export default function TransfersPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-400 uppercase">New Region</label>
-                      <Input className="h-12 bg-slate-50 border-none font-bold text-xs uppercase rounded-xl" value={formData.new_region} onChange={(e) => setFormData({...formData, new_region: e.target.value})} />
+                      <Input className="border-slate-200/50 h-12 bg-slate-50 border-none font-bold text-xs uppercase rounded-xl" value={formData.new_region} onChange={(e) => setFormData({...formData, new_region: e.target.value})} />
                     </div>
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-400 uppercase">New Office</label>
-                      <Input className="h-12 bg-slate-50 border-none font-bold text-xs uppercase rounded-xl" value={formData.new_branch_office} onChange={(e) => setFormData({...formData, new_branch_office: e.target.value})} />
+                      <Input className="border-slate-200/50 h-12 bg-slate-50 border-none font-bold text-xs uppercase rounded-xl" value={formData.new_branch_office} onChange={(e) => setFormData({...formData, new_branch_office: e.target.value})} />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-400 uppercase">Order #</label>
-                      <Input className="h-12 bg-slate-50 border-none font-bold text-xs uppercase rounded-xl" value={formData.order_number} onChange={(e) => setFormData({...formData, order_number: e.target.value})} />
+                      <Input className="border-slate-200/50 h-12 bg-slate-50 border-none font-bold text-xs uppercase rounded-xl" value={formData.order_number} onChange={(e) => setFormData({...formData, order_number: e.target.value})} />
                     </div>
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-400 uppercase">Order Date</label>
-                      <Input type="date" className="h-12 bg-slate-50 border-none font-bold text-xs rounded-xl" value={formData.order_date} onChange={(e) => setFormData({...formData, order_date: e.target.value})} />
+                      <Input type="date" className="border-slate-200/50 h-12 bg-slate-50 border-none font-bold text-xs rounded-xl" value={formData.order_date} onChange={(e) => setFormData({...formData, order_date: e.target.value})} />
                     </div>
                   </div>
 
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-400 uppercase">Remarks</label>
-                    <Input className="h-12 bg-slate-50 border-none font-bold text-xs uppercase rounded-xl" value={formData.remarks} onChange={(e) => setFormData({...formData, remarks: e.target.value})} />
+                    <Input className="border-slate-200/50 h-12 bg-slate-50 border-none font-bold text-xs uppercase rounded-xl" value={formData.remarks} onChange={(e) => setFormData({...formData, remarks: e.target.value})} />
                   </div>
               </div>
 
-              <Button className="w-full h-14 text-sm font-black shadow-2xl bg-slate-900 hover:bg-primary transition-all rounded-2xl tracking-widest" onClick={() => transferMutation.mutate({ employee_id: selectedEmp.id, ...formData })} disabled={!selectedEmp || transferMutation.isPending}>
+              <Button className="w-full h-14 text-sm font-black shadow-2xl bg-[#405189] hover:bg-primary transition-all rounded-2xl tracking-widest" onClick={() => transferMutation.mutate({ employee_id: selectedEmp.id, ...formData })} disabled={!selectedEmp || transferMutation.isPending}>
                   <Save className="h-4 w-4 mr-3" /> REGISTER MOVEMENT
               </Button>
           </CardContent>
@@ -282,7 +282,7 @@ export default function TransfersPage() {
             <h3 className="font-black text-slate-900 uppercase tracking-widest text-sm flex items-center italic px-2"><History className="h-4 w-4 mr-3 text-primary" /> Transfer Log</h3>
             <Card className="border-none shadow-xl bg-white rounded-3xl overflow-hidden border border-slate-100">
                 <Table>
-                <TableHeader className="bg-slate-900">
+                <TableHeader className="bg-[#405189]">
                     <TableRow className="border-none">
                     <TableHead className="font-black text-white text-[9px] uppercase p-4 cursor-pointer" onClick={() => handleSort('name')}>Personnel <SortIcon column="name" /></TableHead>
                     <TableHead className="font-black text-white text-[9px] uppercase p-4 cursor-pointer" onClick={() => handleSort('bs')}>BPS <SortIcon column="bs" /></TableHead>

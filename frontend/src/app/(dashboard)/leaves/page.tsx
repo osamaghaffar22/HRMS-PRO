@@ -77,8 +77,8 @@ export default function LeavesPage() {
   };
 
   const SortIcon = ({ column }: { column: string }) => {
-    if (sort.key !== column || !sort.order) return <ArrowUpDown className="ml-2 h-3 w-3 opacity-30" />;
-    return sort.order === 'asc' ? <ArrowUp className="ml-2 h-3 w-3 text-primary" /> : <ArrowDown className="ml-2 h-3 w-3 text-primary" />;
+    if (sort.key !== column || !sort.order) return <ArrowUpDown className="ml-2 h-3 w-3 text-white/50" />;
+    return sort.order === 'asc' ? <ArrowUp className="ml-2 h-3 w-3 text-white" /> : <ArrowDown className="ml-2 h-3 w-3 text-white" />;
   };
 
   // Fetching Data
@@ -235,8 +235,8 @@ export default function LeavesPage() {
 
       <div className="flex flex-col gap-8 items-start w-full">
         <Card className="w-full border-none shadow-2xl bg-white rounded-3xl border border-slate-100 print:hidden">
-          <CardHeader className="bg-slate-900 text-white p-6 rounded-t-3xl">
-            <CardTitle className="text-lg font-black uppercase tracking-widest flex items-center italic text-primary"><Calendar className="h-5 w-5 mr-3" /> {editingId ? 'Modify Record' : 'Record Application'}</CardTitle>
+          <CardHeader className="bg-[#405189] text-white p-6 rounded-t-3xl">
+            <CardTitle className="text-lg font-black uppercase tracking-widest flex items-center italic text-white"><Calendar className="h-5 w-5 mr-3" /> {editingId ? 'Modify Record' : 'Record Application'}</CardTitle>
           </CardHeader>
           <CardContent className="p-5 sm:p-6 bg-slate-50/50">
             <div className="flex flex-col gap-5">
@@ -250,7 +250,7 @@ export default function LeavesPage() {
                     <Input 
                       placeholder={editingId ? "Edit mode enabled..." : "SEARCH NAME OR ID..."} 
                       disabled={!!editingId} 
-                      className="pl-9 h-10 bg-white border border-slate-200 font-semibold text-xs rounded-lg shadow-sm uppercase w-full" 
+                      className="pl-9 h-10 bg-white border border-slate-200/50 font-semibold text-xs rounded-lg shadow-sm uppercase w-full" 
                       value={empSearch} 
                       onChange={(e) => setEmpSearch(e.target.value)} 
                     />
@@ -283,16 +283,16 @@ export default function LeavesPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                   <Label className="text-[10px] font-bold text-slate-500 uppercase mb-1.5 block tracking-widest">From Date</Label>
-                  <Input type="date" className="h-10 bg-white border border-slate-200 font-semibold text-xs rounded-lg shadow-sm uppercase" value={formData.from_date} onChange={(e) => setFormData({...formData, from_date: e.target.value})} />
+                  <Input type="date" className="h-10 bg-white border border-slate-200/50 font-semibold text-xs rounded-lg shadow-sm uppercase" value={formData.from_date} onChange={(e) => setFormData({...formData, from_date: e.target.value})} />
                 </div>
                 <div>
                   <Label className="text-[10px] font-bold text-slate-500 uppercase mb-1.5 block tracking-widest">To Date</Label>
-                  <Input type="date" className="h-10 bg-white border border-slate-200 font-semibold text-xs rounded-lg shadow-sm uppercase" value={formData.to_date} onChange={(e) => setFormData({...formData, to_date: e.target.value})} />
+                  <Input type="date" className="h-10 bg-white border border-slate-200/50 font-semibold text-xs rounded-lg shadow-sm uppercase" value={formData.to_date} onChange={(e) => setFormData({...formData, to_date: e.target.value})} />
                 </div>
                 <div>
                   <Label className="text-[10px] font-bold text-slate-500 uppercase mb-1.5 block tracking-widest">Status</Label>
                   <Select value={formData.status} onValueChange={(v) => setFormData({...formData, status: v || ''})}>
-                    <SelectTrigger className="h-10 bg-white border border-slate-200 font-semibold text-xs rounded-lg shadow-sm uppercase"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-10 bg-white border border-slate-200/50 font-semibold text-xs rounded-lg shadow-sm uppercase"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Approved" className="text-[11px] font-bold uppercase">Approved</SelectItem>
                       <SelectItem value="Under Process" className="text-[11px] font-bold uppercase">Under Process</SelectItem>
@@ -302,21 +302,21 @@ export default function LeavesPage() {
                 </div>
                 <div>
                   <Label className="text-[10px] font-bold text-slate-500 uppercase mb-1.5 block tracking-widest">Remarks</Label>
-                  <Input placeholder="Enter details..." className="h-10 bg-white border border-slate-200 font-semibold text-xs rounded-lg shadow-sm uppercase" value={formData.remarks} onChange={(e) => setFormData({...formData, remarks: e.target.value})} />
+                  <Input placeholder="Enter details..." className="h-10 bg-white border border-slate-200/50 font-semibold text-xs rounded-lg shadow-sm uppercase" value={formData.remarks} onChange={(e) => setFormData({...formData, remarks: e.target.value})} />
                 </div>
               </div>
 
               {/* Row 3: Action Bar */}
               <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
-                 <div className="flex items-center gap-3 bg-slate-900 px-4 py-2 rounded-lg shadow-sm">
-                    <Clock className="h-4 w-4 text-slate-400" />
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Duration:</span>
-                    <span className="text-sm font-black text-primary italic tracking-tighter">{totalDays} DAYS</span>
+                 <div className="flex items-center gap-3 bg-[#405189] px-4 py-2 rounded-lg shadow-sm">
+                    <Clock className="h-5 w-5 text-white/80" />
+                    <span className="text-[10px] font-bold text-white uppercase tracking-widest">Duration:</span>
+                    <span className="text-xl font-black text-white italic tracking-tighter">{totalDays} DAYS</span>
                  </div>
                  
                  <div className="flex gap-2">
                     {editingId && <Button variant="outline" size="sm" className="h-10 px-6 font-bold rounded-lg uppercase text-[10px]" onClick={resetForm}>Cancel</Button>}
-                    <Button size="sm" className="h-10 px-8 text-xs font-black shadow-md bg-slate-900 hover:bg-primary transition-all rounded-lg tracking-widest uppercase" onClick={handleSave} disabled={!selectedEmp || leaveMutation.isPending}>
+                    <Button size="sm" className="h-10 px-8 text-xs font-black shadow-md bg-[#405189] hover:bg-primary transition-all rounded-lg tracking-widest uppercase" onClick={handleSave} disabled={!selectedEmp || leaveMutation.isPending}>
                         <Save className="h-4 w-4 mr-2" /> {editingId ? 'Update Leave' : 'Save Leave'}
                     </Button>
                  </div>
@@ -344,7 +344,7 @@ export default function LeavesPage() {
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300 group-focus-within:text-primary transition-colors" />
                 <Input 
                     placeholder="SEARCH ACTIVE REGISTRY PERSONNEL..." 
-                    className="h-12 pl-12 bg-white border-none shadow-sm text-[16px] font-bold uppercase tracking-tight placeholder:text-slate-200 focus-visible:ring-1 focus-visible:ring-primary rounded-xl transition-all" 
+                    className="border-slate-200/50 h-12 pl-12 bg-white border-none shadow-sm text-[16px] font-bold uppercase tracking-tight placeholder:text-slate-200 focus-visible:ring-1 focus-visible:ring-primary rounded-xl transition-all" 
                     value={historySearch} 
                     onChange={(e) => setHistorySearch(e.target.value)} 
                 />
@@ -362,16 +362,16 @@ export default function LeavesPage() {
         <div className="w-full space-y-10">
             <Card className="w-full border-none shadow-xl bg-white rounded-3xl overflow-hidden border border-slate-100">
               <Table className="w-full">
-                <TableHeader className="bg-slate-900">
+                <TableHeader className="bg-[#405189]">
                   <TableRow className="border-none">
-                    <TableHead className="font-black text-white text-[9px] uppercase p-5 cursor-pointer" onClick={() => handleSort('name')}>Name <SortIcon column="name" /></TableHead>
-                    <TableHead className="font-black text-white text-[9px] uppercase p-5 cursor-pointer" onClick={() => handleSort('bs')}>BPS <SortIcon column="bs" /></TableHead>
-                    <TableHead className="font-black text-white text-[9px] uppercase p-5 cursor-pointer" onClick={() => handleSort('post_name')}>Designation <SortIcon column="post_name" /></TableHead>
-                    <TableHead className="font-black text-white text-[9px] uppercase p-5 text-center">Period</TableHead>
-                    <TableHead className="font-black text-white text-[9px] uppercase p-5 text-center">Days</TableHead>
-                    <TableHead className="font-black text-white text-[9px] uppercase p-5 text-center">Status</TableHead>
-                    <TableHead className="font-black text-white text-[9px] uppercase p-5 text-center">Remarks</TableHead>
-                    <TableHead className="text-right text-white font-black text-[9px] uppercase p-5 print:hidden">Manage</TableHead>
+                    <TableHead className="font-black text-white text-[11px] uppercase p-5 cursor-pointer" onClick={() => handleSort('name')}><div className="flex items-center">Name <SortIcon column="name" /></div></TableHead>
+                    <TableHead className="font-black text-white text-[11px] uppercase p-5 cursor-pointer text-center" onClick={() => handleSort('bs')}><div className="flex items-center justify-center">BPS <SortIcon column="bs" /></div></TableHead>
+                    <TableHead className="font-black text-white text-[11px] uppercase p-5 cursor-pointer text-center" onClick={() => handleSort('post_name')}><div className="flex items-center justify-center">Designation <SortIcon column="post_name" /></div></TableHead>
+                    <TableHead className="font-black text-white text-[11px] uppercase p-5 text-center"><div className="flex items-center justify-center">Period</div></TableHead>
+                    <TableHead className="font-black text-white text-[11px] uppercase p-5 text-center"><div className="flex items-center justify-center">Days</div></TableHead>
+                    <TableHead className="font-black text-white text-[11px] uppercase p-5 text-center"><div className="flex items-center justify-center">Status</div></TableHead>
+                    <TableHead className="font-black text-white text-[11px] uppercase p-5 text-center"><div className="flex items-center justify-center">Remarks</div></TableHead>
+                    <TableHead className="text-right text-white font-black text-[11px] uppercase p-5 print:hidden"><div className="flex items-center justify-end">Manage</div></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -386,7 +386,7 @@ export default function LeavesPage() {
                         <TableCell className="text-center font-black text-slate-600 text-[10px]">{record.employee_bs || '-'}</TableCell>
                         <TableCell className="text-center font-black text-primary text-[10px]">{record.employee_post || 'DESIGNATION NOT SET'}</TableCell>
                         <TableCell className="text-[11px] font-bold text-slate-600 text-center tabular-nums">{record.from_date} <span className="mx-2 text-slate-300 tracking-tighter">---------</span> {record.to_date}</TableCell>
-                        <TableCell className="text-center p-5"><Badge className="bg-slate-900 text-white border-none font-black text-[10px] h-8 px-4 rounded-full">{record.total_days} DAYS</Badge></TableCell>
+                        <TableCell className="text-center p-5"><Badge className="bg-[#405189] text-white border-none font-black text-[10px] h-8 px-4 rounded-full">{record.total_days} DAYS</Badge></TableCell>
                         <TableCell className="text-center p-5"><span className={cn("uppercase text-[9px] font-black px-4 py-1.5 rounded-full border shadow-sm", record.status === 'Approved' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : record.status === 'Rejected' ? 'bg-rose-50 text-rose-600 border-rose-100' : 'bg-amber-50 text-amber-600 border-amber-100')}>{record.status}</span></TableCell>
                         <TableCell className="p-5 text-center text-[10px] font-bold text-slate-600">{record.remarks || "-"}</TableCell>
                         <TableCell className="text-right p-5 print:hidden"><div className="flex justify-end gap-2"><Button variant="ghost" size="icon" className="h-10 w-10 text-slate-400 hover:text-primary hover:bg-primary/5 rounded-xl transition-all" onClick={() => handleEdit(record)}><Edit2 className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="h-10 w-10 text-slate-200 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all" onClick={() => { if(confirm("Permanent Delete?")) deleteMutation.mutate(record.id); }}><Trash2 className="h-4 w-4" /></Button></div></TableCell>

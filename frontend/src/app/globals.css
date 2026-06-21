@@ -19,34 +19,34 @@
 }
 
 :root {
-  /* Modern Fresh & Light Palette - True Purple */
-  --background: oklch(0.98 0.005 280); 
+  /* Minimalist Teal Theme */
+  --background: oklch(0.98 0.005 280); /* Light slate */
   --foreground: oklch(0.2 0.05 280);
   
-  --card: oklch(1 0 0);
+  --card: oklch(1 0 0); /* Pure White */
   --card-foreground: oklch(0.2 0.05 280);
   
-  --primary: oklch(0.55 0.25 295); /* Vibrant True Purple */
+  --primary: oklch(0.55 0.15 250); /* Vibrant Blue */
   --primary-foreground: oklch(1 0 0);
   
-  --secondary: oklch(0.92 0.08 295); /* Distinct Light Purple (clearly purple, not white) */
-  --secondary-foreground: oklch(0.55 0.25 295);
+  --secondary: oklch(0.96 0.01 280); /* Very soft slate panel */
+  --secondary-foreground: oklch(0.3 0.05 280);
   
   --muted: oklch(0.97 0.01 280);
   --muted-foreground: oklch(0.5 0.05 280);
   
-  --accent: oklch(0.94 0.04 295);
-  --accent-foreground: oklch(0.55 0.25 295);
+  --accent: oklch(0.94 0.04 250); /* Light blue highlight */
+  --accent-foreground: oklch(0.55 0.12 185);
   
-  --success: oklch(0.7 0.18 160); /* Fresh Green */
-  --warning: oklch(0.8 0.18 85);  /* Fresh Amber */
-  --danger: oklch(0.65 0.22 25);  /* Fresh Red */
+  --success: oklch(0.7 0.15 150); /* Green */
+  --warning: oklch(0.8 0.15 80);
+  --danger: oklch(0.65 0.2 25);
   
-  --border: oklch(0.92 0.02 280);
-  --input: oklch(0.92 0.02 280);
-  --ring: oklch(0.55 0.25 295);
+  --border: oklch(0.94 0.02 280); /* Very light border */
+  --input: oklch(0.94 0.02 280);
+  --ring: oklch(0.55 0.12 185);
   
-  --radius: 1.25rem;
+  --radius: 1.5rem;
 }
 
 @layer base {

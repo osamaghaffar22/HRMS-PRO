@@ -149,20 +149,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!token) return null;
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden">
+    <div className="flex h-screen bg-slate-100 overflow-hidden">
       {/* Sidebar - Modern Purple Style */}
       <aside className={cn(
-        "hidden md:flex flex-col bg-primary transition-all duration-500 ease-in-out shadow-2xl shadow-primary/20 z-20",
+        "hidden md:flex flex-col bg-white/60 backdrop-blur-2xl border-r border-slate-200/50 transition-all duration-500 ease-in-out shadow-xl shadow-slate-200/20 z-20",
         isCollapsed ? "w-20" : "w-60"
       )}>
-        <div className="h-24 flex items-center px-6 shrink-0 overflow-hidden border-b border-white/10">
-          <div className="bg-white h-10 w-10 rounded-2xl flex items-center justify-center text-primary shadow-lg shrink-0">
+        <div className="h-24 flex items-center px-6 shrink-0 overflow-hidden border-b border-slate-200/50">
+          <div className="bg-blue-600 h-10 w-10 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-600/30 shrink-0">
             <span className="font-black text-xl">H</span>
           </div>
           {!isCollapsed && (
             <div className="ml-3 flex flex-col">
-              <span className="font-black text-lg tracking-tighter text-white leading-none">HRMS</span>
-              <span className="text-[8px] font-black text-white/60 uppercase tracking-[0.2em] mt-1">Enterprise Pro</span>
+              <span className="font-black text-lg tracking-tighter text-slate-900 leading-none">HRMS</span>
+              <span className="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] mt-1">Enterprise Pro</span>
             </div>
           )}
         </div>
@@ -177,8 +177,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 className={cn(
                   "flex items-center h-10 px-3 rounded-lg transition-all duration-300 group relative",
                   isActive 
-                    ? "bg-white text-primary font-bold shadow-md shadow-white/5" 
-                    : "text-white/70 hover:bg-white/10 hover:text-white"
+                    ? "bg-blue-50 text-blue-700 font-bold rounded-lg" 
+                    : "text-slate-500 hover:bg-slate-100/80 hover:text-slate-900 rounded-lg"
                 )}
               >
                 <item.icon className={cn("h-4.5 w-4.5 shrink-0", !isCollapsed && "mr-3")} />
@@ -189,16 +189,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           })}
         </nav>
 
-        <div className="p-4 space-y-2 border-t border-white/10">
+        <div className="p-4 space-y-2 border-t border-slate-200/50">
           {(user?.role === 'Admin' || user?.permissions?.data_exchange === true) && !isCollapsed && (
             <div className="flex flex-col gap-1.5">
-               <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest px-2">Data Exchange</p>
+               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2">Data Exchange</p>
                <div className="flex gap-1">
                   <input type="file" accept=".xlsx, .xls" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
-                  <Button variant="ghost" className="flex-1 justify-center text-[11px] font-bold text-white bg-white/10 hover:bg-white/20 h-8 px-2 rounded-lg border border-white/5" onClick={handleImportClick} disabled={isSyncing}>
+                  <Button variant="ghost" className="flex-1 justify-center text-[11px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 h-8 px-2 rounded-lg border border-slate-200/50" onClick={handleImportClick} disabled={isSyncing}>
                      <RefreshCw className={cn("h-3 w-3 mr-1.5", isSyncing && "animate-spin")} /> Import
                   </Button>
-                  <Button variant="ghost" className="flex-1 justify-center text-[11px] font-bold text-white bg-white/10 hover:bg-white/20 h-8 px-2 rounded-lg border border-white/5" onClick={handleExportExcel} disabled={isSyncing}>
+                  <Button variant="ghost" className="flex-1 justify-center text-[11px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 h-8 px-2 rounded-lg border border-slate-200/50" onClick={handleExportExcel} disabled={isSyncing}>
                      <Download className="h-3 w-3 mr-1.5" /> Export
                   </Button>
                </div>
@@ -208,7 +208,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <Button 
             variant="ghost" 
             className={cn(
-              "w-full justify-start text-white/60 hover:text-white hover:bg-rose-500/20 h-10 px-3 rounded-lg transition-all",
+              "w-full justify-start text-slate-500 hover:text-rose-600 hover:bg-rose-50 h-10 px-3 rounded-lg transition-all",
               isCollapsed && "justify-center"
             )}
             onClick={logout}
@@ -222,9 +222,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         {/* Full-Width Solid Purple Header - No Gaps */}
-        <header className="h-20 bg-secondary border-b border-primary/20 flex items-center justify-between px-10 shrink-0 z-20 shadow-md">
+        <header className="h-20 bg-[#405189] border-b border-white/10 flex items-center justify-between px-10 shrink-0 z-20 shadow-md">
           <div className="flex flex-col" style={{ fontFamily: 'Arial, sans-serif' }}>
-            <h1 className="text-2xl font-black tracking-tighter text-slate-900 uppercase leading-none">
+            <h1 className="text-3xl font-bold tracking-tight text-white leading-none">
                {pathname === '/employees' ? 'Employees' : 
                 pathname === '/hr-pool' ? 'HR Strategic Pool' : 
                 pathname === '/transfers' ? 'Transfers' :
@@ -234,15 +234,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 pathname === '/reports' ? 'Reports' :
                 pathname === '/custom' ? 'Custom Modules' : 'Dashboard'}
             </h1>
-            <p className="text-[9px] font-black text-primary uppercase tracking-[0.3em] mt-1">
+            <p className="text-xs font-semibold text-indigo-200 tracking-wider mt-1.5">
               Human Resource Management System Pro
             </p>
           </div>
 
           <div className="flex items-center gap-6">
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-bold text-slate-900 tracking-tight">{user?.full_name}</p>
-              <p className="text-[10px] font-bold text-primary uppercase tracking-widest">{user?.role}</p>
+              <p className="text-sm font-semibold text-white">{user?.full_name}</p>
+              <p className="text-[11px] font-medium text-indigo-200">{user?.role}</p>
             </div>
             <div className="h-10 w-10 rounded-xl bg-white border border-primary/20 shadow-sm flex items-center justify-center text-primary font-bold text-base">
               {user?.username?.[0].toUpperCase()}

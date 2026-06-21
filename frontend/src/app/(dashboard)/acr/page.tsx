@@ -143,7 +143,7 @@ export default function ACRPage() {
   const [formEmpSearch, setFormEmpSearch] = useState('');
   const [selectedFormEmp, setSelectedFormEmp] = useState<any>(null);
   const [acrFormData, setAcrFormData] = useState<any>({
-    year: new Date().getFullYear().toString(),
+    year: (new Date().getFullYear() - 1).toString(),
     from_date: '',
     to_date: '',
     ga: '',
@@ -545,7 +545,7 @@ export default function ACRPage() {
   const addPeriodMutation = useMutation({
     mutationFn: async (data: any) => {
       let tid = data.reportId;
-      const periodYear = data.period_data?.from_date ? data.period_data.from_date.split('-')[0] : new Date().getFullYear().toString();
+      const periodYear = data.period_data?.from_date ? data.period_data.from_date.split('-')[0] : (new Date().getFullYear() - 1).toString();
       if (!tid) tid = (await api.post('/api/acr/report', { report_data: { employee_id: data.employeeId, year: periodYear, status: 'Pending' } })).data.id;
       return api.post('/api/acr/period', { period_data: { acr_report_id: tid, ...data.period_data, status: data.period_data?.status || "Pending" } });
     },
@@ -624,7 +624,7 @@ export default function ACRPage() {
     const cleanDate = (d: string) => d ? d.split('T')[0] : '';
 
     setAcrFormData({
-      year: report?.year || p.year?.toString() || new Date().getFullYear().toString(),
+      year: report?.year || p.year?.toString() || (new Date().getFullYear() - 1).toString(),
       from_date: cleanDate(p.from),
       to_date: cleanDate(p.to),
       ga: p.ga || '',
@@ -659,7 +659,7 @@ export default function ACRPage() {
     const cleanDate = (d: string) => d ? d.split('T')[0] : '';
 
     setAcrFormData({
-      year: p.year?.toString() || new Date().getFullYear().toString(),
+      year: p.year?.toString() || (new Date().getFullYear() - 1).toString(),
       from_date: cleanDate(p.from),
       to_date: cleanDate(p.to),
       ga: '',
@@ -722,7 +722,7 @@ const handleExportExcel = () => {
           });
       }
       if (showRemaining) {
-          const yearsToCheck = tabYearsFilter.length > 0 ? tabYearsFilter : [new Date().getFullYear().toString()];
+          const yearsToCheck = tabYearsFilter.length > 0 ? tabYearsFilter : [(new Date().getFullYear() - 1).toString()];
           yearsToCheck.forEach(y => {
               const gaps = calculateGaps(y, submitted.filter((p: any) => p.year?.toString() === y), emp.joining_date);
               gaps.forEach((g: any) => {
@@ -758,7 +758,7 @@ const handleExportExcel = () => {
             });
         }
         if (showRemaining) {
-            const yearsToCheck = tabYearsFilter.length > 0 ? tabYearsFilter : [new Date().getFullYear().toString()];
+            const yearsToCheck = tabYearsFilter.length > 0 ? tabYearsFilter : [(new Date().getFullYear() - 1).toString()];
             yearsToCheck.forEach(y => {
                 const gaps = calculateGaps(y, submitted.filter((p: any) => p.year?.toString() === y), emp.joining_date);
                 gaps.forEach((g: any) => {
@@ -844,7 +844,7 @@ const handleExportExcel = () => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
     const fromDate = formData.get('from_date') as string;
-    const periodYear = fromDate ? fromDate.split('-')[0] : new Date().getFullYear().toString();
+    const periodYear = fromDate ? fromDate.split('-')[0] : (new Date().getFullYear() - 1).toString();
     try {
         let targetReportId = reportId;
         if (!targetReportId) {
@@ -911,17 +911,17 @@ const handleExportExcel = () => {
           {category === 'Form' && (
             <>
             <Card className="border-none shadow-2xl bg-white rounded-3xl border border-slate-100 overflow-hidden">
-              <CardHeader className="bg-slate-900 text-white p-6"><CardTitle className="text-lg font-black uppercase tracking-widest flex items-center italic text-primary"><Calendar className="h-5 w-5 mr-3" /> ACR Entry Form</CardTitle></CardHeader>
+              <CardHeader className="bg-[#405189] text-white p-6"><CardTitle className="text-lg font-black uppercase tracking-widest flex items-center italic text-white"><Calendar className="h-5 w-5 mr-3" /> ACR Entry Form</CardTitle></CardHeader>
             <CardContent className="p-6 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
                 <div className="md:col-span-2 space-y-1 relative acr-nav-group">
-                  <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Step 1: Personnel Search</Label>
+                  <Label className="text-[10px] font-black text-[#405189] uppercase tracking-widest">Step 1: Personnel Search</Label>
                   <div className="relative">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
                     <Input 
                       ref={personnelSearchRef}
                       placeholder="SEARCH NAME OR CODE..." 
-                      className="pl-12 h-10 bg-slate-50 border-none font-bold text-sm rounded-xl shadow-inner uppercase focus:ring-2 focus:ring-primary/20" 
+                      className="border-slate-200/50 pl-12 h-10 bg-slate-50 border-none font-bold text-sm rounded-xl shadow-inner uppercase focus:ring-2 focus:ring-primary/20" 
                       value={formEmpSearch || ''} 
                       onFocus={() => !isJumping.current && setActiveDropdown('personnel')} 
                       onChange={(e) => { setFormEmpSearch(e.target.value); if(!e.target.value) setSelectedFormEmp(null); setPersonnelIdx(0); }} 
@@ -941,19 +941,19 @@ const handleExportExcel = () => {
                     </div>
                   )}
                 </div>
-                <div className="space-y-1"><Label className="text-[9px] text-slate-400 ml-1 uppercase font-bold">Code</Label><Input readOnly placeholder="---" className="h-10 bg-slate-100/50 border-none font-black text-xs uppercase rounded-xl" value={selectedFormEmp?.code || selectedFormEmp?.id || ''} /></div>
-                <div className="space-y-1"><Label className="text-[9px] text-slate-400 ml-1 uppercase font-bold">BPS</Label><Input readOnly placeholder="---" className="h-10 bg-slate-100/50 border-none font-black text-xs uppercase rounded-xl" value={selectedFormEmp?.bs || ''} /></div>
-                <div className="space-y-1"><Label className="text-[9px] text-slate-400 ml-1 uppercase font-bold">Designation</Label><Input readOnly placeholder="---" className="h-10 bg-slate-100/50 border-none font-black text-xs uppercase rounded-xl" value={selectedFormEmp?.post_name || ''} /></div>
-                <div className="md:col-span-5 space-y-1"><Label className="text-[9px] text-slate-400 ml-1 uppercase font-bold">Posting Office</Label><Input readOnly placeholder="OFFICE DETAILS..." className="h-10 bg-slate-100/50 border-none font-black text-xs uppercase rounded-xl" value={selectedFormEmp?.branch_office || ''} /></div>
+                <div className="space-y-1"><Label className="text-[9px] text-[#405189] ml-1 uppercase font-bold">Code</Label><Input readOnly placeholder="---" className="border-slate-200/50 h-10 bg-slate-100/50 border-none font-black text-xs uppercase rounded-xl" value={selectedFormEmp?.code || selectedFormEmp?.id || ''} /></div>
+                <div className="space-y-1"><Label className="text-[9px] text-[#405189] ml-1 uppercase font-bold">BPS</Label><Input readOnly placeholder="---" className="border-slate-200/50 h-10 bg-slate-100/50 border-none font-black text-xs uppercase rounded-xl" value={selectedFormEmp?.bs || ''} /></div>
+                <div className="space-y-1"><Label className="text-[9px] text-[#405189] ml-1 uppercase font-bold">Designation</Label><Input readOnly placeholder="---" className="border-slate-200/50 h-10 bg-slate-100/50 border-none font-black text-xs uppercase rounded-xl" value={selectedFormEmp?.post_name || ''} /></div>
+                <div className="md:col-span-5 space-y-1"><Label className="text-[9px] text-[#405189] ml-1 uppercase font-bold">Posting Office</Label><Input readOnly placeholder="OFFICE DETAILS..." className="border-slate-200/50 h-10 bg-slate-100/50 border-none font-black text-xs uppercase rounded-xl" value={selectedFormEmp?.branch_office || ''} /></div>
               </div>
 
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* Year */}
                   <div className="space-y-1 relative acr-nav-group">
-                    <Label className="text-[10px] font-black text-slate-400 uppercase">Year</Label>
+                    <Label className="text-[10px] font-black text-[#405189] uppercase">Year</Label>
                     <div className="relative">
-                      <Input ref={yearInputRef} readOnly className="h-10 bg-slate-50 border-none font-bold text-xs rounded-xl uppercase cursor-pointer focus:ring-2 focus:ring-primary/20" value={acrFormData.year} onFocus={() => !isJumping.current && setActiveDropdown('year')} onKeyDown={(e) => handleDropdownKeyDown(e, filteredFormYears.map((y:any, i:number) => ({ value: String(y), label: String(y), key: String(i+1) })), 'year', fromDateRef, null)} />
+                      <Input ref={yearInputRef} readOnly className="border-slate-200/50 h-10 bg-slate-50 border-none font-bold text-xs rounded-xl uppercase cursor-pointer focus:ring-2 focus:ring-primary/20" value={acrFormData.year} onFocus={() => !isJumping.current && setActiveDropdown('year')} onKeyDown={(e) => handleDropdownKeyDown(e, filteredFormYears.map((y:any, i:number) => ({ value: String(y), label: String(y), key: String(i+1) })), 'year', fromDateRef, null)} />
                       <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
                     </div>
                     {activeDropdown === 'year' && (
@@ -964,16 +964,16 @@ const handleExportExcel = () => {
                       </div>
                     )}
                   </div>
-                  <div className="space-y-1"><Label className="text-[10px] font-black text-slate-400 uppercase">From</Label><Input ref={fromDateRef} type="date" className="h-10 bg-slate-50 border-none font-bold text-xs rounded-xl" value={acrFormData.from_date} onChange={(e) => setAcrFormData((p:any) => ({...p, from_date: e.target.value}))} onKeyDown={(e) => e.key === 'Enter' && jumpToField(toDateRef, null)} /></div>
-                  <div className="space-y-1"><Label className="text-[10px] font-black text-slate-400 uppercase">To</Label><Input ref={toDateRef} type="date" className="h-10 bg-slate-50 border-none font-bold text-xs rounded-xl" value={acrFormData.to_date} onChange={(e) => setAcrFormData((p:any) => ({...p, to_date: e.target.value}))} onKeyDown={(e) => e.key === 'Enter' && jumpToField(gaInputRef, 'ga')} /></div>
+                  <div className="space-y-1"><Label className="text-[10px] font-black text-[#405189] uppercase">From</Label><Input ref={fromDateRef} type="date" className="border-slate-200/50 h-10 bg-slate-50 border-none font-bold text-xs rounded-xl" value={acrFormData.from_date} onChange={(e) => setAcrFormData((p:any) => ({...p, from_date: e.target.value}))} onKeyDown={(e) => e.key === 'Enter' && jumpToField(toDateRef, null)} /></div>
+                  <div className="space-y-1"><Label className="text-[10px] font-black text-[#405189] uppercase">To</Label><Input ref={toDateRef} type="date" className="border-slate-200/50 h-10 bg-slate-50 border-none font-bold text-xs rounded-xl" value={acrFormData.to_date} onChange={(e) => setAcrFormData((p:any) => ({...p, to_date: e.target.value}))} onKeyDown={(e) => e.key === 'Enter' && jumpToField(gaInputRef, 'ga')} /></div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* GA */}
                   <div className="space-y-1 relative acr-nav-group">
-                    <Label className="text-[10px] font-black text-slate-400 uppercase">GA Assessment</Label>
+                    <Label className="text-[10px] font-black text-[#405189] uppercase">GA Assessment</Label>
                     <div className="relative">
-                      <Input ref={gaInputRef} readOnly className="h-10 bg-slate-50 border-none font-bold text-xs rounded-xl uppercase cursor-pointer focus:ring-2 focus:ring-primary/20" value={ASSESSMENT_OPTIONS.find(o => o.value === acrFormData.ga)?.label || ''} onFocus={() => !isJumping.current && setActiveDropdown('ga')} onKeyDown={(e) => handleDropdownKeyDown(e, ASSESSMENT_OPTIONS, 'ga', promotionInputRef, 'promotion')} />
+                      <Input ref={gaInputRef} readOnly className="border-slate-200/50 h-10 bg-slate-50 border-none font-bold text-xs rounded-xl uppercase cursor-pointer focus:ring-2 focus:ring-primary/20" value={ASSESSMENT_OPTIONS.find(o => o.value === acrFormData.ga)?.label || ''} onFocus={() => !isJumping.current && setActiveDropdown('ga')} onKeyDown={(e) => handleDropdownKeyDown(e, ASSESSMENT_OPTIONS, 'ga', promotionInputRef, 'promotion')} />
                       <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
                     </div>
                     {activeDropdown === 'ga' && (
@@ -986,9 +986,9 @@ const handleExportExcel = () => {
                   </div>
                   {/* Promotion */}
                   <div className="space-y-1 relative acr-nav-group">
-                    <Label className="text-[10px] font-black text-slate-400 uppercase">Promotion Fitness</Label>
+                    <Label className="text-[10px] font-black text-[#405189] uppercase">Promotion Fitness</Label>
                     <div className="relative">
-                      <Input ref={promotionInputRef} readOnly className="h-10 bg-slate-50 border-none font-bold text-xs rounded-xl uppercase cursor-pointer focus:ring-2 focus:ring-primary/20" value={PROMOTION_OPTIONS.find(o => o.value === acrFormData.promotion)?.label || ''} onFocus={() => !isJumping.current && setActiveDropdown('promotion')} onKeyDown={(e) => handleDropdownKeyDown(e, PROMOTION_OPTIONS, 'promotion', fitnessInputRef, 'fitness')} />
+                      <Input ref={promotionInputRef} readOnly className="border-slate-200/50 h-10 bg-slate-50 border-none font-bold text-xs rounded-xl uppercase cursor-pointer focus:ring-2 focus:ring-primary/20" value={PROMOTION_OPTIONS.find(o => o.value === acrFormData.promotion)?.label || ''} onFocus={() => !isJumping.current && setActiveDropdown('promotion')} onKeyDown={(e) => handleDropdownKeyDown(e, PROMOTION_OPTIONS, 'promotion', fitnessInputRef, 'fitness')} />
                       <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
                     </div>
                     {activeDropdown === 'promotion' && (
@@ -1001,9 +1001,9 @@ const handleExportExcel = () => {
                   </div>
                   {/* Fitness */}
                   <div className="space-y-1 relative acr-nav-group">
-                    <Label className="text-[10px] font-black text-slate-400 uppercase">Fitness (After 25Y)</Label>
+                    <Label className="text-[10px] font-black text-[#405189] uppercase">Fitness (After 25Y)</Label>
                     <div className="relative">
-                      <Input ref={fitnessInputRef} readOnly className="h-10 bg-slate-50 border-none font-bold text-xs rounded-xl uppercase cursor-pointer focus:ring-2 focus:ring-primary/20" value={FITNESS_OPTIONS.find(o => o.value === acrFormData.fitness_after_25_years)?.label || ''} onFocus={() => !isJumping.current && setActiveDropdown('fitness')} onKeyDown={(e) => handleDropdownKeyDown(e, FITNESS_OPTIONS, 'fitness_after_25_years', roSearchRef, 'ro')} />
+                      <Input ref={fitnessInputRef} readOnly className="border-slate-200/50 h-10 bg-slate-50 border-none font-bold text-xs rounded-xl uppercase cursor-pointer focus:ring-2 focus:ring-primary/20" value={FITNESS_OPTIONS.find(o => o.value === acrFormData.fitness_after_25_years)?.label || ''} onFocus={() => !isJumping.current && setActiveDropdown('fitness')} onKeyDown={(e) => handleDropdownKeyDown(e, FITNESS_OPTIONS, 'fitness_after_25_years', roSearchRef, 'ro')} />
                       <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
                     </div>
                     {activeDropdown === 'fitness' && (
@@ -1018,8 +1018,8 @@ const handleExportExcel = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="space-y-1 relative acr-nav-group">
-                    <Label className="text-[10px] font-black text-slate-400 uppercase">RO</Label>
-                    <Input ref={roSearchRef} placeholder="SEARCH RO..." className="h-10 bg-slate-50 border-none font-bold text-[10px] rounded-xl uppercase" value={roSearch} onFocus={() => !isJumping.current && setActiveDropdown('ro')} onChange={(e) => { setRoSearch(e.target.value); if(!e.target.value) setSelectedRo(null); setRoIdx(0); }} onKeyDown={(e) => handleSearchKeyDown(e, roSearchEmps || [], roIdx, setRoIdx, selectRo)} />
+                    <Label className="text-[10px] font-black text-[#405189] uppercase">RO</Label>
+                    <Input ref={roSearchRef} placeholder="SEARCH RO..." className="border-slate-200/50 h-10 bg-slate-50 border-none font-bold text-[10px] rounded-xl uppercase" value={roSearch} onFocus={() => !isJumping.current && setActiveDropdown('ro')} onChange={(e) => { setRoSearch(e.target.value); if(!e.target.value) setSelectedRo(null); setRoIdx(0); }} onKeyDown={(e) => handleSearchKeyDown(e, roSearchEmps || [], roIdx, setRoIdx, selectRo)} />
                     {activeDropdown === 'ro' && roSearchEmps && roSearchEmps.length > 0 && !selectedRo && (
                       <div className="absolute w-full border rounded-xl shadow-2xl max-h-48 overflow-y-auto bg-white z-[100] border-slate-100 mt-1">
                         {roSearchEmps.map((e: any, i: number) => (
@@ -1028,10 +1028,10 @@ const handleExportExcel = () => {
                       </div>
                     )}
                   </div>
-                  <div className="space-y-1"><Label className="text-[10px] font-black text-slate-400 uppercase">RO Date</Label><Input ref={roDateRef} type="date" className="h-10 bg-slate-50 border-none font-bold text-[10px] rounded-xl focus:ring-2 focus:ring-primary/20" value={acrFormData.ro_date} onChange={(e) => setAcrFormData((p:any) => ({...p, ro_date: e.target.value}))} onKeyDown={(e) => e.key === 'Enter' && jumpToField(coSearchRef, 'co')} /></div>
+                  <div className="space-y-1"><Label className="text-[10px] font-black text-[#405189] uppercase">RO Date</Label><Input ref={roDateRef} type="date" className="border-slate-200/50 h-10 bg-slate-50 border-none font-bold text-[10px] rounded-xl focus:ring-2 focus:ring-primary/20" value={acrFormData.ro_date} onChange={(e) => setAcrFormData((p:any) => ({...p, ro_date: e.target.value}))} onKeyDown={(e) => e.key === 'Enter' && jumpToField(coSearchRef, 'co')} /></div>
                   <div className="space-y-1 relative acr-nav-group">
-                    <Label className="text-[10px] font-black text-slate-400 uppercase">CO</Label>
-                    <Input ref={coSearchRef} placeholder="SEARCH CO..." className="h-10 bg-slate-50 border-none font-bold text-[10px] rounded-xl uppercase" value={coSearch} onFocus={() => !isJumping.current && setActiveDropdown('co')} onChange={(e) => { setCoSearch(e.target.value); if(!e.target.value) setSelectedCo(null); setCoIdx(0); }} onKeyDown={(e) => handleSearchKeyDown(e, coSearchEmps || [], coIdx, setCoIdx, selectCo)} />
+                    <Label className="text-[10px] font-black text-[#405189] uppercase">CO</Label>
+                    <Input ref={coSearchRef} placeholder="SEARCH CO..." className="border-slate-200/50 h-10 bg-slate-50 border-none font-bold text-[10px] rounded-xl uppercase" value={coSearch} onFocus={() => !isJumping.current && setActiveDropdown('co')} onChange={(e) => { setCoSearch(e.target.value); if(!e.target.value) setSelectedCo(null); setCoIdx(0); }} onKeyDown={(e) => handleSearchKeyDown(e, coSearchEmps || [], coIdx, setCoIdx, selectCo)} />
                     {activeDropdown === 'co' && coSearchEmps && coSearchEmps.length > 0 && !selectedCo && (
                       <div className="absolute w-full border rounded-xl shadow-2xl max-h-48 overflow-y-auto bg-white z-[100] border-slate-100 mt-1">
                         {coSearchEmps.map((e: any, i: number) => (
@@ -1040,15 +1040,15 @@ const handleExportExcel = () => {
                       </div>
                     )}
                   </div>
-                  <div className="space-y-1"><Label className="text-[10px] font-black text-slate-400 uppercase">CO Date</Label><Input ref={coDateRef} type="date" className="h-10 bg-slate-50 border-none font-bold text-[10px] rounded-xl focus:ring-2 focus:ring-primary/20" value={acrFormData.co_date} onChange={(e) => setAcrFormData((p:any) => ({...p, co_date: e.target.value}))} onKeyDown={(e) => e.key === 'Enter' && jumpToField(resultInputRef, 'result')} /></div>
+                  <div className="space-y-1"><Label className="text-[10px] font-black text-[#405189] uppercase">CO Date</Label><Input ref={coDateRef} type="date" className="border-slate-200/50 h-10 bg-slate-50 border-none font-bold text-[10px] rounded-xl focus:ring-2 focus:ring-primary/20" value={acrFormData.co_date} onChange={(e) => setAcrFormData((p:any) => ({...p, co_date: e.target.value}))} onKeyDown={(e) => e.key === 'Enter' && jumpToField(resultInputRef, 'result')} /></div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   {/* Result */}
                   <div className="space-y-1 relative acr-nav-group">
-                    <Label className="text-[10px] font-black text-slate-400 uppercase">Result</Label>
+                    <Label className="text-[10px] font-black text-[#405189] uppercase">Result</Label>
                     <div className="relative">
-                      <Input ref={resultInputRef} readOnly className="h-10 bg-slate-50 border-none font-bold text-xs rounded-xl uppercase cursor-pointer focus:ring-2 focus:ring-primary/20" value={RESULT_OPTIONS.find(o => o.value === acrFormData.result)?.label || ''} onFocus={() => !isJumping.current && setActiveDropdown('result')} onKeyDown={(e) => handleDropdownKeyDown(e, RESULT_OPTIONS, 'result', remarksRef, null)} />
+                      <Input ref={resultInputRef} readOnly className="border-slate-200/50 h-10 bg-slate-50 border-none font-bold text-xs rounded-xl uppercase cursor-pointer focus:ring-2 focus:ring-primary/20" value={RESULT_OPTIONS.find(o => o.value === acrFormData.result)?.label || ''} onFocus={() => !isJumping.current && setActiveDropdown('result')} onKeyDown={(e) => handleDropdownKeyDown(e, RESULT_OPTIONS, 'result', remarksRef, null)} />
                       <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
                     </div>
                     {activeDropdown === 'result' && (
@@ -1060,10 +1060,10 @@ const handleExportExcel = () => {
                     )}
                   </div>
                   <div className="md:col-span-3 space-y-1">
-                    <Label className="text-[10px] font-black text-slate-400 uppercase">Remarks</Label>
+                    <Label className="text-[10px] font-black text-[#405189] uppercase">Remarks</Label>
                     <Input 
                       ref={remarksRef} 
-                      className="h-10 bg-slate-50 border-none font-bold text-xs uppercase rounded-xl focus:ring-2 focus:ring-primary/20" 
+                      className="border-slate-200/50 h-10 bg-slate-50 border-none font-bold text-xs uppercase rounded-xl focus:ring-2 focus:ring-primary/20" 
                       placeholder="ENTER REMARKS..." 
                       value={acrFormData.remarks} 
                       onChange={(e) => setAcrFormData((p:any) => ({...p, remarks: e.target.value}))} 
@@ -1078,7 +1078,7 @@ const handleExportExcel = () => {
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button ref={saveBtnRef} className={cn("flex-1 h-12 text-xs font-black shadow-2xl transition-all rounded-2xl tracking-[0.3em] uppercase", editingPeriodId ? "bg-amber-500 hover:bg-amber-600" : "bg-slate-900 hover:bg-primary")} onClick={handleFormSave} disabled={!selectedFormEmp}>
+                <Button ref={saveBtnRef} className={cn("flex-1 h-12 text-xs font-black shadow-2xl transition-all rounded-2xl tracking-[0.3em] uppercase", editingPeriodId ? "bg-amber-500 hover:bg-amber-600" : "bg-[#405189] hover:bg-primary")} onClick={handleFormSave} disabled={!selectedFormEmp}>
                   {editingPeriodId ? <Edit2 className="h-4 w-4 mr-3" /> : <Save className="h-4 w-4 mr-3" />}
                   {editingPeriodId ? "Update ACR Entry" : "Save ACR Entry"}
                 </Button>
@@ -1116,8 +1116,8 @@ const handleExportExcel = () => {
                   <Card className="border-none shadow-2xl bg-white rounded-3xl overflow-hidden min-h-[200px]">
                     <div className="w-full overflow-x-auto">
                         <Table className="w-full whitespace-nowrap">
-                            <TableHeader className="bg-slate-900">
-                                <TableRow className="border-none hover:bg-slate-900">
+                            <TableHeader className="bg-[#405189]">
+                                <TableRow className="border-none hover:bg-white/5">
                                 <TableHead className="font-black text-white text-[9px] uppercase p-3 text-center">S.No</TableHead>
                                 <TableHead className="font-black text-white text-[9px] uppercase p-3 text-center">Year</TableHead>
                                 <TableHead className="font-black text-white text-[9px] uppercase p-3 text-center">From</TableHead>
@@ -1129,7 +1129,7 @@ const handleExportExcel = () => {
                                 <TableHead className="font-black text-white text-[9px] uppercase p-3">CO Name</TableHead>
                                 <TableHead className="font-black text-white text-[9px] uppercase p-3">Result</TableHead>
                                 <TableHead className="font-black text-white text-[9px] uppercase p-3 text-center">Duration</TableHead>
-                                <TableHead className="text-center text-white font-black text-[9px] uppercase p-3 sticky right-0 bg-slate-900">Manage</TableHead>
+                                <TableHead className="text-center text-white font-black text-[9px] uppercase p-3 sticky right-0 bg-[#405189]">Manage</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -1229,7 +1229,7 @@ const handleExportExcel = () => {
                     </div>
                     <div className="relative group flex-1 h-12">
                       <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300 group-focus-within:text-primary transition-colors" />
-                      <Input placeholder="SEARCH HISTORY..." className="h-12 pl-12 bg-white border-none shadow-sm text-[16px] font-bold uppercase tracking-tight placeholder:text-slate-200 focus-visible:ring-1 focus-visible:ring-primary rounded-xl transition-all" value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} />
+                      <Input placeholder="SEARCH HISTORY..." className="border-slate-200/50 h-12 pl-12 bg-white border-none shadow-sm text-[16px] font-bold uppercase tracking-tight placeholder:text-slate-200 focus-visible:ring-1 focus-visible:ring-primary rounded-xl transition-all" value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} />
                     </div>
                     <div className="flex items-center gap-2 bg-white p-1 rounded-xl shadow-sm border border-slate-100 h-12 px-2">
                         <div className="flex flex-col items-center justify-center px-4 border-r border-slate-100 mr-2">
@@ -1248,8 +1248,8 @@ const handleExportExcel = () => {
                         <Card className="border-none shadow-2xl bg-white rounded-3xl overflow-hidden min-h-[300px]">
               <div className="w-full overflow-x-auto">
                 <Table className="w-full whitespace-nowrap">
-                  <TableHeader className="bg-slate-900">
-                    <TableRow className="border-none hover:bg-slate-900">
+                  <TableHeader className="bg-[#405189]">
+                    <TableRow className="border-none hover:bg-white/5">
                       <TableHead className="font-black text-white text-[9px] uppercase p-3 text-center">S.No</TableHead>
                       <TableHead className="font-black text-white text-[9px] uppercase p-3">Code</TableHead>
                       <TableHead className="font-black text-white text-[9px] uppercase p-3">Name</TableHead>
@@ -1266,7 +1266,7 @@ const handleExportExcel = () => {
                       <TableHead className="font-black text-white text-[9px] uppercase p-3">CO Name</TableHead>
                       <TableHead className="font-black text-white text-[9px] uppercase p-3">Result</TableHead>
                       <TableHead className="font-black text-white text-[9px] uppercase p-3 text-center">Duration</TableHead>
-                      <TableHead className="text-center text-white font-black text-[9px] uppercase p-3 sticky right-0 bg-slate-900">Manage</TableHead>
+                      <TableHead className="text-center text-white font-black text-[9px] uppercase p-3 sticky right-0 bg-[#405189]">Manage</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1363,7 +1363,7 @@ const handleExportExcel = () => {
           <div className="flex items-center gap-3 no-print">
             <div className="relative group flex-1">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300 group-focus-within:text-primary transition-colors" />
-              <Input placeholder={`SEARCH ${category.toUpperCase()} (NAME, CNIC)...`} className="h-12 pl-12 bg-white border-none shadow-sm text-[16px] font-bold uppercase tracking-tight placeholder:text-slate-200 focus-visible:ring-1 focus-visible:ring-primary rounded-xl transition-all" value={search} onChange={(e) => setSearch(e.target.value)} />
+              <Input placeholder={`SEARCH ${category.toUpperCase()} (NAME, CNIC)...`} className="border-slate-200/50 h-12 pl-12 bg-white border-none shadow-sm text-[16px] font-bold uppercase tracking-tight placeholder:text-slate-200 focus-visible:ring-1 focus-visible:ring-primary rounded-xl transition-all" value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
             <div className="flex items-center gap-2 bg-white p-1 rounded-xl shadow-sm border border-slate-100 h-12 px-2">
                 <div className="flex flex-col items-center justify-center px-4 border-r border-slate-100 mr-2">
@@ -1381,13 +1381,13 @@ const handleExportExcel = () => {
           <Card className="border-none shadow-2xl overflow-hidden bg-white rounded-3xl border border-slate-100">
             <div className="w-full overflow-x-auto">
               <Table className="w-full table-fixed">
-                <TableHeader className="bg-slate-900">
-                  <TableRow className="hover:bg-slate-900 border-none h-14">
+                <TableHeader className="bg-[#405189]">
+                  <TableRow className="hover:bg-[#405189] border-none h-14">
                     {(category === 'Officer' ? OFFICERS_COLUMNS : OFFICIALS_COLUMNS).map((col) => {
                       const sortKeyMap: any = { 'Name': 'name', 'Designation': 'post_name', 'BPS': 'bs', 'Office': 'branch_office' };
                       const sortKey = sortKeyMap[col.name];
                       return (
-                        <TableHead key={col.name} className={`${col.width} text-white font-black text-[12px] uppercase p-2 ${['Duration', 'Status', 'Actions'].includes(col.name) ? 'text-center' : ''} ${sortKey ? 'cursor-pointer hover:bg-slate-800 transition-colors' : ''}`} onClick={() => sortKey && handleSort(sortKey)}>
+                        <TableHead key={col.name} className={`${col.width} text-white font-black text-[12px] uppercase p-2 ${['Duration', 'Status', 'Actions'].includes(col.name) ? 'text-center' : ''} ${sortKey ? 'cursor-pointer hover:bg-[#405189] transition-colors' : ''}`} onClick={() => sortKey && handleSort(sortKey)}>
                           <div className={`flex items-center ${['Duration', 'Status', 'Actions'].includes(col.name) ? 'justify-center' : ''}`}>
                             {col.name} {sortKey && <SortIcon column={sortKey} />}
                           </div>

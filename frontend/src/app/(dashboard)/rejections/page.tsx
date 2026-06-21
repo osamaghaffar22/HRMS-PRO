@@ -78,7 +78,7 @@ export default function RejectionsPage() {
         <TabsContent value="officials" className="mt-0 outline-none">
           <Card className="border-none shadow-xl overflow-hidden bg-white rounded-3xl border border-slate-100">
             <Table className="table-fixed w-full">
-              <TableHeader className="bg-slate-900">
+              <TableHeader className="bg-[#405189]">
                 <TableRow className="border-none h-14">
                   <TableHead className="w-[4%] text-white font-black text-[10px] uppercase p-3 text-center">S.No</TableHead>
                   <TableHead className="w-[18%] text-white font-black text-[11px] uppercase p-3">Name</TableHead>
@@ -187,7 +187,7 @@ export default function RejectionsPage() {
         <TabsContent value="rationalization" className="mt-0 outline-none">
           <Card className="border-none shadow-xl overflow-hidden bg-white rounded-3xl border border-slate-100">
             <Table className="table-fixed w-full">
-              <TableHeader className="bg-slate-900">
+              <TableHeader className="bg-[#405189]">
                 <TableRow className="border-none h-14">
                   <TableHead className="w-[5%] text-white font-black text-[10px] uppercase p-3 text-center">S.No</TableHead>
                   <TableHead className="w-[20%] text-white font-black text-[11px] uppercase p-3">Name</TableHead>

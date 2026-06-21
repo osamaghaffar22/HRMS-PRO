@@ -183,7 +183,7 @@ export default function RationalizationPage() {
         </div>
         {canEdit && (
           <Button 
-            className="h-12 px-6 font-black uppercase text-xs tracking-widest rounded-xl shadow-2xl bg-slate-900 hover:bg-primary transition-all group"
+            className="h-12 px-6 font-black uppercase text-xs tracking-widest rounded-xl shadow-2xl bg-[#405189] hover:bg-primary transition-all group"
             onClick={openCreate}
           >
             <Plus className="mr-2 h-4 w-4 group-hover:rotate-90 transition-transform" />
@@ -193,9 +193,9 @@ export default function RationalizationPage() {
       </div>
 
       <Card className="border-none shadow-2xl bg-white rounded-3xl overflow-hidden border border-slate-100 min-h-[400px]">
-        <CardHeader className="bg-slate-900 text-white p-6">
-          <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] flex items-center italic">
-            <Scale className="h-4 w-4 mr-3 text-primary" /> Active Post Quotas
+        <CardHeader className="bg-[#405189] text-white p-6">
+          <CardTitle className="text-lg font-black uppercase tracking-[0.2em] flex items-center italic text-white">
+            <Scale className="h-5 w-5 mr-3 text-white" /> Active Post Quotas
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
@@ -213,16 +213,16 @@ export default function RationalizationPage() {
           ) : (
             <div className="overflow-x-auto">
               <Table>
-                <TableHeader className="bg-slate-50">
+                <TableHeader className="bg-[#405189]">
                   <TableRow className="h-12 border-none">
-                    <TableHead className="font-black text-slate-700 text-[10px] uppercase p-4">Wing / Division</TableHead>
-                    <TableHead className="font-black text-slate-700 text-[10px] uppercase p-4">Region</TableHead>
-                    <TableHead className="font-black text-slate-700 text-[10px] uppercase p-4">Office / Branch</TableHead>
-                    <TableHead className="font-black text-slate-700 text-[10px] uppercase p-4">Designation</TableHead>
-                    <TableHead className="font-black text-slate-700 text-[10px] uppercase p-4 text-center">Allocated Quota</TableHead>
-                    <TableHead className="font-black text-slate-700 text-[10px] uppercase p-4 text-center">Currently Filled</TableHead>
-                    <TableHead className="font-black text-slate-700 text-[10px] uppercase p-4 text-center">Status</TableHead>
-                    {canEdit && <TableHead className="text-right text-slate-700 font-black text-[10px] uppercase p-4">Actions</TableHead>}
+                    <TableHead className="font-black text-white text-[10px] uppercase p-4">Wing / Division</TableHead>
+                    <TableHead className="font-black text-white text-[10px] uppercase p-4">Region</TableHead>
+                    <TableHead className="font-black text-white text-[10px] uppercase p-4">Office / Branch</TableHead>
+                    <TableHead className="font-black text-white text-[10px] uppercase p-4">Designation</TableHead>
+                    <TableHead className="font-black text-white text-[10px] uppercase p-4 text-center">Allocated Quota</TableHead>
+                    <TableHead className="font-black text-white text-[10px] uppercase p-4 text-center">Currently Filled</TableHead>
+                    <TableHead className="font-black text-white text-[10px] uppercase p-4 text-center">Status</TableHead>
+                    {canEdit && <TableHead className="text-right text-white font-black text-[10px] uppercase p-4">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -364,7 +364,7 @@ export default function RationalizationPage() {
                       <Input 
                         type="number" 
                         min="0" 
-                        className="h-10 px-3 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus-visible:ring-2 focus-visible:ring-primary/20 w-24 text-center font-bold" 
+                        className="h-10 px-3 bg-white border border-slate-200/50 rounded-md text-sm text-slate-900 focus-visible:ring-2 focus-visible:ring-primary/20 w-24 text-center font-bold" 
                         value={qty} 
                         onChange={e => setFormData({
                           ...formData, 

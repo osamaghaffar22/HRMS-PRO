@@ -311,7 +311,7 @@ export default function CustomModulesPage() {
           <p className="text-slate-500 font-bold text-[10px] uppercase tracking-[0.4em] mt-1 opacity-70">Dynamic Registry Generation System</p>
         </div>
         <Button 
-            className="h-12 px-6 font-black uppercase text-xs tracking-widest rounded-xl shadow-2xl bg-slate-900 hover:bg-primary transition-all group"
+            className="h-12 px-6 font-black uppercase text-xs tracking-widest rounded-xl shadow-2xl bg-[#405189] hover:bg-primary transition-all group"
             onClick={() => setShowModuleConfig(!showConfig)}
         >
           {showConfig ? <X className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4 group-hover:rotate-90 transition-transform" />}
@@ -323,7 +323,7 @@ export default function CustomModulesPage() {
         {/* Navigation Sidebar */}
         {!activeModule && (
         <Card className="xl:col-span-3 border-none shadow-2xl bg-white rounded-3xl overflow-hidden border border-slate-100 min-h-[400px]">
-          <CardHeader className="bg-slate-900 text-white p-6">
+          <CardHeader className="bg-[#405189] text-white p-6">
             <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] flex items-center italic">
               <Layout className="h-4 w-4 mr-3 text-primary" /> Active Deployments
             </CardTitle>
@@ -368,7 +368,7 @@ export default function CustomModulesPage() {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                     <div className="space-y-3">
                         <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">1. Module Title</Label>
-                        <Input placeholder="E.G., DEGREE VERIFICATION..." className="h-14 bg-slate-50 border-none font-black text-sm rounded-2xl shadow-inner uppercase" value={newModuleName} onChange={(e) => setNewModuleName(e.target.value)} />
+                        <Input placeholder="E.G., DEGREE VERIFICATION..." className="border-slate-200/50 h-14 bg-slate-50 border-none font-black text-sm rounded-2xl shadow-inner uppercase" value={newModuleName} onChange={(e) => setNewModuleName(e.target.value)} />
                     </div>
                     <div className="space-y-3">
                         <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">2. Base Database Columns</Label>
@@ -383,8 +383,8 @@ export default function CustomModulesPage() {
                     <div className="space-y-3">
                         <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">3. Custom Data Columns</Label>
                         <div className="flex gap-2">
-                           <Input placeholder="E.G., STATUS..." className="h-14 bg-slate-50 border-none font-bold text-xs rounded-2xl shadow-inner uppercase" value={currentColInput} onChange={(e) => setCurrentColInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && addColumn()} />
-                           <Button className="h-14 w-14 bg-slate-900 rounded-2xl shadow-xl hover:bg-primary transition-all" onClick={addColumn}><Plus className="h-5 w-5" /></Button>
+                           <Input placeholder="E.G., STATUS..." className="border-slate-200/50 h-14 bg-slate-50 border-none font-bold text-xs rounded-2xl shadow-inner uppercase" value={currentColInput} onChange={(e) => setCurrentColInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && addColumn()} />
+                           <Button className="h-14 w-14 bg-[#405189] rounded-2xl shadow-xl hover:bg-primary transition-all" onClick={addColumn}><Plus className="h-5 w-5" /></Button>
                         </div>
                     </div>
                   </div>
@@ -399,7 +399,7 @@ export default function CustomModulesPage() {
                   </div>
 
                   <Button 
-                    className="w-full h-16 font-black uppercase text-sm tracking-widest rounded-2xl shadow-2xl bg-slate-900 hover:bg-emerald-600 transition-all shadow-emerald-500/20" 
+                    className="w-full h-16 font-black uppercase text-sm tracking-widest rounded-2xl shadow-2xl bg-[#405189] hover:bg-emerald-600 transition-all shadow-emerald-500/20" 
                     disabled={!newModuleName} 
                     onClick={() => {
                         const baseIds = availableColumns.filter(c => selectedBaseColsLabels.includes(c.label)).map(c => c.id);
@@ -429,13 +429,13 @@ export default function CustomModulesPage() {
           {activeModule && !showConfig && (
             <div className="space-y-8 animate-in fade-in zoom-in-95 duration-500">
               <Card className="border-none shadow-xl bg-white rounded-3xl overflow-hidden border border-slate-100 print:shadow-none print:border-none print:rounded-none">
-                <CardHeader className="bg-slate-900 text-white p-6 flex flex-col md:flex-row items-center justify-between rounded-t-3xl gap-4 print:hidden">
+                <CardHeader className="bg-[#405189] text-white p-6 flex flex-col md:flex-row items-center justify-between rounded-t-3xl gap-4 print:hidden">
                   <div className="flex items-center gap-4">
-                    <Button variant="ghost" size="icon" className="hover:bg-slate-800 text-white rounded-full" onClick={() => setActiveModule(null)}>
+                    <Button variant="ghost" size="icon" className="hover:bg-[#405189] text-white rounded-full" onClick={() => setActiveModule(null)}>
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
                     <div>
-                        <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center italic text-primary">
+                        <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center italic text-white">
                             <History className="h-5 w-5 mr-3" /> {activeModule.title} Registry
                         </CardTitle>
                         <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">
@@ -446,7 +446,7 @@ export default function CustomModulesPage() {
                   <div className="flex items-center gap-2 w-full md:w-auto">
                     <div className="relative flex-1 md:w-64">
                         <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                        <Input placeholder="Search by name..." className="pl-9 bg-slate-800 border-none text-white placeholder:text-slate-500 h-9 rounded-xl text-xs uppercase" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                        <Input placeholder="Search by name..." className="border-slate-200/50 pl-9 bg-[#405189] border-none text-white placeholder:text-slate-500 h-9 rounded-xl text-xs uppercase" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                     </div>
                     <Button variant="ghost" size="icon" className="text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10" onClick={() => exportData('excel')}><Download className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="icon" className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10" onClick={() => exportData('pdf')}><FileText className="h-4 w-4" /></Button>
@@ -500,15 +500,15 @@ export default function CustomModulesPage() {
                     {/* Table */}
                     <div className="rounded-xl border border-slate-200 overflow-x-auto max-h-[600px] custom-scrollbar print:max-h-none print:border-none print:overflow-visible">
                         <Table>
-                            <TableHeader className="bg-slate-50 sticky top-0 z-20 print:static">
+                            <TableHeader className="bg-[#405189] sticky top-0 z-20 print:static">
                                 <TableRow className="h-12 border-none">
                                     {(activeModule.columns?.base || []).map((col: string) => (
-                                        <TableHead key={col} className="font-black text-slate-700 text-[10px] uppercase p-4 text-center whitespace-nowrap">{getLabel(col)}</TableHead>
+                                        <TableHead key={col} className="font-black text-white text-[11px] uppercase p-4 text-center whitespace-nowrap">{getLabel(col)}</TableHead>
                                     ))}
                                     {(activeModule.columns?.custom || []).map((col: string) => (
-                                        <TableHead key={col} className="font-black text-primary text-[10px] uppercase p-4 text-center whitespace-nowrap bg-primary/5">{col}</TableHead>
+                                        <TableHead key={col} className="font-black text-white text-[11px] uppercase p-4 text-center whitespace-nowrap">{col}</TableHead>
                                     ))}
-                                    <TableHead className="text-right text-slate-700 font-black text-[10px] uppercase p-4 whitespace-nowrap sticky right-0 bg-slate-50 z-30 print:hidden">Manage</TableHead>
+                                    <TableHead className="text-right text-white font-black text-[11px] uppercase p-4 whitespace-nowrap sticky right-0 bg-[#405189] z-30 print:hidden">Manage</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -557,7 +557,7 @@ export default function CustomModulesPage() {
 
       <Dialog open={!!editingEmp} onOpenChange={(open) => !open && setEditingEmp(null)}>
         <DialogContent className="sm:max-w-md bg-white rounded-3xl border-none shadow-2xl">
-          <DialogHeader className="bg-slate-900 p-6 -m-6 mb-6 rounded-t-3xl">
+          <DialogHeader className="bg-[#405189] p-6 -m-6 mb-6 rounded-t-3xl">
             <DialogTitle className="text-white font-black uppercase tracking-widest text-sm flex items-center">
               <Edit2 className="h-4 w-4 mr-3 text-primary" /> Edit Custom Data
             </DialogTitle>
@@ -570,7 +570,7 @@ export default function CustomModulesPage() {
                 <div key={col} className="space-y-2">
                     <Label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">{col}</Label>
                     <Input 
-                        className="h-12 bg-slate-50 border-none font-bold text-xs uppercase rounded-xl shadow-inner" 
+                        className="border-slate-200/50 h-12 bg-slate-50 border-none font-bold text-xs uppercase rounded-xl shadow-inner" 
                         value={editingData[col] || ''} 
                         onChange={(e) => setEditingData({...editingData, [col]: e.target.value})} 
                     />
@@ -580,7 +580,7 @@ export default function CustomModulesPage() {
           <DialogFooter className="mt-8 px-2 pb-2">
             <Button variant="ghost" onClick={() => setEditingEmp(null)} className="h-12 uppercase text-xs font-black tracking-widest text-slate-500">Cancel</Button>
             <Button 
-                className="h-12 px-8 uppercase text-xs font-black tracking-widest rounded-xl bg-slate-900 hover:bg-primary shadow-xl"
+                className="h-12 px-8 uppercase text-xs font-black tracking-widest rounded-xl bg-[#405189] hover:bg-primary shadow-xl"
                 onClick={() => {
                     saveDataMutation.mutate({ employee_id: editingEmp.id, data: editingData });
                     setEditingEmp(null);

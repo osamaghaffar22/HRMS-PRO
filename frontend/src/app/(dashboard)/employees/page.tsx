@@ -102,13 +102,13 @@ function TransferHistorySection({ employeeId, employeeName, currentPosting, onRe
             <Table>
               <TableHeader className="bg-slate-50">
                 <TableRow className="h-10 border-none">
-                  <TableHead className="text-[9px] font-black uppercase text-slate-500">Order Details</TableHead>
-                  <TableHead className="text-[9px] font-black uppercase text-slate-500 text-center">Previous Posting</TableHead>
-                  <TableHead className="text-[9px] font-black uppercase text-slate-500 text-center">New Posting</TableHead>
-                  <TableHead className="text-[9px] font-black uppercase text-slate-500 text-center">Joining Date</TableHead>
-                  <TableHead className="text-[9px] font-black uppercase text-slate-500 text-center">Relieving Date</TableHead>
-                  <TableHead className="text-[9px] font-black uppercase text-slate-500 text-center">Tenure</TableHead>
-                  {canEdit && <TableHead className="text-[9px] font-black uppercase text-slate-500 text-center">Actions</TableHead>}
+                  <TableHead className="text-[9px] font-black uppercase text-white">Order Details</TableHead>
+                  <TableHead className="text-[9px] font-black uppercase text-white text-center">Previous Posting</TableHead>
+                  <TableHead className="text-[9px] font-black uppercase text-white text-center">New Posting</TableHead>
+                  <TableHead className="text-[9px] font-black uppercase text-white text-center">Joining Date</TableHead>
+                  <TableHead className="text-[9px] font-black uppercase text-white text-center">Relieving Date</TableHead>
+                  <TableHead className="text-[9px] font-black uppercase text-white text-center">Tenure</TableHead>
+                  {canEdit && <TableHead className="text-[9px] font-black uppercase text-white text-center">Actions</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -170,35 +170,35 @@ function TransferHistorySection({ employeeId, employeeName, currentPosting, onRe
             <div className="grid grid-cols-2 gap-4 py-4">
               <div className="space-y-2">
                 <Label className="text-xs">Order Number</Label>
-                <Input className="h-9 text-xs" value={editingTransfer.order_number || ''} onChange={(e) => setEditingTransfer({...editingTransfer, order_number: e.target.value})} />
+                <Input className="border-slate-200/50 h-9 text-xs" value={editingTransfer.order_number || ''} onChange={(e) => setEditingTransfer({...editingTransfer, order_number: e.target.value})} />
               </div>
               <div className="space-y-2">
                 <Label className="text-xs">Order Date</Label>
-                <Input type="date" className="h-9 text-xs" value={editingTransfer.order_date || ''} onChange={(e) => setEditingTransfer({...editingTransfer, order_date: e.target.value})} />
+                <Input type="date" className="border-slate-200/50 h-9 text-xs" value={editingTransfer.order_date || ''} onChange={(e) => setEditingTransfer({...editingTransfer, order_date: e.target.value})} />
               </div>
               <div className="space-y-2">
                 <Label className="text-xs">Previous Branch Office</Label>
-                <Input className="h-9 text-xs" value={editingTransfer.previous_branch_office || ''} onChange={(e) => setEditingTransfer({...editingTransfer, previous_branch_office: e.target.value})} />
+                <Input className="border-slate-200/50 h-9 text-xs" value={editingTransfer.previous_branch_office || ''} onChange={(e) => setEditingTransfer({...editingTransfer, previous_branch_office: e.target.value})} />
               </div>
               <div className="space-y-2">
                 <Label className="text-xs">Previous Region</Label>
-                <Input className="h-9 text-xs" value={editingTransfer.previous_region || ''} onChange={(e) => setEditingTransfer({...editingTransfer, previous_region: e.target.value})} />
+                <Input className="border-slate-200/50 h-9 text-xs" value={editingTransfer.previous_region || ''} onChange={(e) => setEditingTransfer({...editingTransfer, previous_region: e.target.value})} />
               </div>
               <div className="space-y-2">
                 <Label className="text-xs">New Branch Office</Label>
-                <Input className="h-9 text-xs" value={editingTransfer.new_branch_office || ''} onChange={(e) => setEditingTransfer({...editingTransfer, new_branch_office: e.target.value})} />
+                <Input className="border-slate-200/50 h-9 text-xs" value={editingTransfer.new_branch_office || ''} onChange={(e) => setEditingTransfer({...editingTransfer, new_branch_office: e.target.value})} />
               </div>
               <div className="space-y-2">
                 <Label className="text-xs">New Region</Label>
-                <Input className="h-9 text-xs" value={editingTransfer.new_region || ''} onChange={(e) => setEditingTransfer({...editingTransfer, new_region: e.target.value})} />
+                <Input className="border-slate-200/50 h-9 text-xs" value={editingTransfer.new_region || ''} onChange={(e) => setEditingTransfer({...editingTransfer, new_region: e.target.value})} />
               </div>
               <div className="space-y-2">
                 <Label className="text-xs">Relieving Date</Label>
-                <Input type="date" className="h-9 text-xs" value={editingTransfer.relieving_date || ''} onChange={(e) => setEditingTransfer({...editingTransfer, relieving_date: e.target.value})} />
+                <Input type="date" className="border-slate-200/50 h-9 text-xs" value={editingTransfer.relieving_date || ''} onChange={(e) => setEditingTransfer({...editingTransfer, relieving_date: e.target.value})} />
               </div>
               <div className="space-y-2">
                 <Label className="text-xs">Duration Spent</Label>
-                <Input className="h-9 text-xs" value={editingTransfer.duration_spent || ''} onChange={(e) => setEditingTransfer({...editingTransfer, duration_spent: e.target.value})} />
+                <Input className="border-slate-200/50 h-9 text-xs" value={editingTransfer.duration_spent || ''} onChange={(e) => setEditingTransfer({...editingTransfer, duration_spent: e.target.value})} />
               </div>
             </div>
             <div className="flex justify-end gap-3 mt-4">
@@ -259,14 +259,14 @@ function LeaveHistorySection({ employeeId, employeeName, canEdit }: { employeeId
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <Label className="text-[13px] font-semibold text-slate-700">From Date</Label>
-              <Input type="date" className="h-10 px-3 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus-visible:ring-2 focus-visible:ring-primary/20" value={formData.from_date} onChange={(e) => setFormData({...formData, from_date: e.target.value})} />
+              <Input type="date" className="h-10 px-3 bg-white border border-slate-200/50 rounded-md text-sm text-slate-900 focus-visible:ring-2 focus-visible:ring-primary/20" value={formData.from_date} onChange={(e) => setFormData({...formData, from_date: e.target.value})} />
             </div>
             <div className="space-y-2">
               <Label className="text-[13px] font-semibold text-slate-700">To Date</Label>
-              <Input type="date" className="h-10 px-3 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus-visible:ring-2 focus-visible:ring-primary/20" value={formData.to_date} onChange={(e) => setFormData({...formData, to_date: e.target.value})} />
+              <Input type="date" className="h-10 px-3 bg-white border border-slate-200/50 rounded-md text-sm text-slate-900 focus-visible:ring-2 focus-visible:ring-primary/20" value={formData.to_date} onChange={(e) => setFormData({...formData, to_date: e.target.value})} />
             </div>
             
-            <div className="bg-slate-900 p-6 rounded-3xl flex justify-between items-center shadow-xl md:col-span-2">
+            <div className="bg-[#405189] p-6 rounded-3xl flex justify-between items-center shadow-xl md:col-span-2">
                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Calculated Duration</span>
                  <span className="text-3xl font-black text-primary italic">{totalDays} DAYS</span>
             </div>
@@ -274,7 +274,7 @@ function LeaveHistorySection({ employeeId, employeeName, canEdit }: { employeeId
             <div className="space-y-2">
               <Label className="text-[13px] font-semibold text-slate-700">Status</Label>
               <Select value={formData.status} onValueChange={(v) => setFormData({...formData, status: v || ''})}>
-                <SelectTrigger className="h-10 px-3 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus-visible:ring-2 focus-visible:ring-primary/20"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-10 px-3 bg-white border border-slate-200/50 rounded-md text-sm text-slate-900 focus-visible:ring-2 focus-visible:ring-primary/20"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Approved" className="text-xs font-bold uppercase">Approved</SelectItem>
                   <SelectItem value="Under Process" className="text-xs font-bold uppercase">Under Process</SelectItem>
@@ -284,12 +284,12 @@ function LeaveHistorySection({ employeeId, employeeName, canEdit }: { employeeId
             </div>
             <div className="space-y-2">
               <Label className="text-[13px] font-semibold text-slate-700">Remarks</Label>
-              <Input className="h-10 px-3 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus-visible:ring-2 focus-visible:ring-primary/20" value={formData.remarks} onChange={(e) => setFormData({...formData, remarks: e.target.value})} />
+              <Input className="h-10 px-3 bg-white border border-slate-200/50 rounded-md text-sm text-slate-900 focus-visible:ring-2 focus-visible:ring-primary/20" value={formData.remarks} onChange={(e) => setFormData({...formData, remarks: e.target.value})} />
             </div>
           </div>
 
           <Button 
-            className="w-full h-10 mt-6 text-sm font-medium shadow-sm bg-slate-900 hover:bg-slate-800 transition-all rounded-md text-white" 
+            className="w-full h-10 mt-6 text-sm font-medium shadow-sm bg-[#405189] hover:bg-[#405189] transition-all rounded-md text-white" 
             onClick={() => leaveMutation.mutate({ employee_id: employeeId, ...formData, total_days: totalDays })}
             disabled={leaveMutation.isPending}
           >
@@ -314,10 +314,10 @@ function LeaveHistorySection({ employeeId, employeeName, canEdit }: { employeeId
             <Table>
               <TableHeader className="bg-slate-50">
                 <TableRow className="h-10 border-none">
-                  <TableHead className="text-[9px] font-black uppercase text-slate-500">Period</TableHead>
-                  <TableHead className="text-[9px] font-black uppercase text-slate-500 text-center">Days</TableHead>
-                  <TableHead className="text-[9px] font-black uppercase text-slate-500 text-center">Status</TableHead>
-                  <TableHead className="text-[9px] font-black uppercase text-slate-500">Remarks</TableHead>
+                  <TableHead className="text-[9px] font-black uppercase text-white">Period</TableHead>
+                  <TableHead className="text-[9px] font-black uppercase text-white text-center">Days</TableHead>
+                  <TableHead className="text-[9px] font-black uppercase text-white text-center">Status</TableHead>
+                  <TableHead className="text-[9px] font-black uppercase text-white">Remarks</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -329,7 +329,7 @@ function LeaveHistorySection({ employeeId, employeeName, canEdit }: { employeeId
                       </div>
                     </TableCell>
                     <TableCell className="text-center py-3">
-                        <Badge className="bg-slate-900 text-white font-black text-[9px]">{r.total_days} DAYS</Badge>
+                        <Badge className="bg-[#405189] text-white font-black text-[9px]">{r.total_days} DAYS</Badge>
                     </TableCell>
                     <TableCell className="text-center py-3">
                         <Badge variant="outline" className={cn(
@@ -417,21 +417,21 @@ function ACRHistorySection({ employeeId, employeeName, canEdit }: { employeeId: 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="space-y-2">
               <Label className="text-[13px] font-semibold text-slate-700">Year</Label>
-              <Input type="number" className="h-10 px-3 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus-visible:ring-2 focus-visible:ring-primary/20" value={formData.year} onChange={(e) => setFormData({...formData, year: e.target.value})} />
+              <Input type="number" className="h-10 px-3 bg-white border border-slate-200/50 rounded-md text-sm text-slate-900 focus-visible:ring-2 focus-visible:ring-primary/20" value={formData.year} onChange={(e) => setFormData({...formData, year: e.target.value})} />
             </div>
             <div className="space-y-2">
               <Label className="text-[13px] font-semibold text-slate-700">From Date</Label>
-              <Input type="date" className="h-10 px-3 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus-visible:ring-2 focus-visible:ring-primary/20" value={formData.from_date} onChange={(e) => setFormData({...formData, from_date: e.target.value})} />
+              <Input type="date" className="h-10 px-3 bg-white border border-slate-200/50 rounded-md text-sm text-slate-900 focus-visible:ring-2 focus-visible:ring-primary/20" value={formData.from_date} onChange={(e) => setFormData({...formData, from_date: e.target.value})} />
             </div>
             <div className="space-y-2">
               <Label className="text-[13px] font-semibold text-slate-700">To Date</Label>
-              <Input type="date" className="h-10 px-3 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus-visible:ring-2 focus-visible:ring-primary/20" value={formData.to_date} onChange={(e) => setFormData({...formData, to_date: e.target.value})} />
+              <Input type="date" className="h-10 px-3 bg-white border border-slate-200/50 rounded-md text-sm text-slate-900 focus-visible:ring-2 focus-visible:ring-primary/20" value={formData.to_date} onChange={(e) => setFormData({...formData, to_date: e.target.value})} />
             </div>
             
             <div className="space-y-2">
               <Label className="text-[13px] font-semibold text-slate-700">GA</Label>
               <Select value={formData.ga} onValueChange={(v) => setFormData({...formData, ga: v || ''})}>
-                <SelectTrigger className="h-10 px-3 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus-visible:ring-2 focus-visible:ring-primary/20"><SelectValue placeholder="Select GA" /></SelectTrigger>
+                <SelectTrigger className="h-10 px-3 bg-white border border-slate-200/50 rounded-md text-sm text-slate-900 focus-visible:ring-2 focus-visible:ring-primary/20"><SelectValue placeholder="Select GA" /></SelectTrigger>
                 <SelectContent>
                   {['Outstanding', 'Very Good', 'Good', 'Average', 'Below Average', 'Poor'].map(o => <SelectItem key={o} value={o} className="text-xs font-bold uppercase">{o}</SelectItem>)}
                 </SelectContent>
@@ -440,7 +440,7 @@ function ACRHistorySection({ employeeId, employeeName, canEdit }: { employeeId: 
             <div className="space-y-2">
               <Label className="text-[13px] font-semibold text-slate-700">Promotion Fitness</Label>
               <Select value={formData.promotion} onValueChange={(v) => setFormData({...formData, promotion: v || ''})}>
-                <SelectTrigger className="h-10 px-3 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus-visible:ring-2 focus-visible:ring-primary/20"><SelectValue placeholder="Select Fitness" /></SelectTrigger>
+                <SelectTrigger className="h-10 px-3 bg-white border border-slate-200/50 rounded-md text-sm text-slate-900 focus-visible:ring-2 focus-visible:ring-primary/20"><SelectValue placeholder="Select Fitness" /></SelectTrigger>
                 <SelectContent>
                   {['Recommended for accelerated Promotion', 'Fit for Promotion', 'Recently promoted', 'Assessment for the further promotion in premature', 'Not yet fit for promotion but likely to become fit in course of time', 'Unfit for further promotion', 'Has reached his ceiling'].map(o => <SelectItem key={o} value={o} className="text-xs font-bold uppercase">{o}</SelectItem>)}
                 </SelectContent>
@@ -449,7 +449,7 @@ function ACRHistorySection({ employeeId, employeeName, canEdit }: { employeeId: 
             <div className="space-y-2">
               <Label className="text-[13px] font-semibold text-slate-700">Remarks</Label>
               <Select value={formData.remarks} onValueChange={(v) => setFormData({...formData, remarks: v || ''})}>
-                <SelectTrigger className="h-10 px-3 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus-visible:ring-2 focus-visible:ring-primary/20"><SelectValue placeholder="Select Remarks" /></SelectTrigger>
+                <SelectTrigger className="h-10 px-3 bg-white border border-slate-200/50 rounded-md text-sm text-slate-900 focus-visible:ring-2 focus-visible:ring-primary/20"><SelectValue placeholder="Select Remarks" /></SelectTrigger>
                 <SelectContent>
                   {['Satisfactory', 'Not Satisfactory'].map(o => <SelectItem key={o} value={o} className="text-xs font-bold uppercase">{o}</SelectItem>)}
                 </SelectContent>
@@ -458,7 +458,7 @@ function ACRHistorySection({ employeeId, employeeName, canEdit }: { employeeId: 
           </div>
 
           <Button 
-            className="w-full h-10 mt-6 text-sm font-medium shadow-sm bg-slate-900 hover:bg-slate-800 transition-all rounded-md text-white" 
+            className="w-full h-10 mt-6 text-sm font-medium shadow-sm bg-[#405189] hover:bg-[#405189] transition-all rounded-md text-white" 
             onClick={() => acrMutation.mutate(formData)}
             disabled={acrMutation.isPending}
           >
@@ -483,11 +483,11 @@ function ACRHistorySection({ employeeId, employeeName, canEdit }: { employeeId: 
             <Table>
                 <TableHeader className="bg-slate-50">
                     <TableRow className="h-10 border-none">
-                        <TableHead className="text-[9px] font-black uppercase text-slate-500">Year</TableHead>
-                        <TableHead className="text-[9px] font-black uppercase text-slate-500">Period</TableHead>
-                        <TableHead className="text-[9px] font-black uppercase text-slate-500 text-center">GA</TableHead>
-                        <TableHead className="text-[9px] font-black uppercase text-slate-500 text-center">Promotion</TableHead>
-                        <TableHead className="text-[9px] font-black uppercase text-slate-500">Remarks</TableHead>
+                        <TableHead className="text-[9px] font-black uppercase text-white">Year</TableHead>
+                        <TableHead className="text-[9px] font-black uppercase text-white">Period</TableHead>
+                        <TableHead className="text-[9px] font-black uppercase text-white text-center">GA</TableHead>
+                        <TableHead className="text-[9px] font-black uppercase text-white text-center">Promotion</TableHead>
+                        <TableHead className="text-[9px] font-black uppercase text-white">Remarks</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -497,7 +497,7 @@ function ACRHistorySection({ employeeId, employeeName, canEdit }: { employeeId: 
                                 <TableCell className="py-3 font-black text-primary text-xs">{report.year}</TableCell>
                                 <TableCell className="py-3 text-[10px] font-bold text-slate-600 uppercase tabular-nums">{p.from_date} — {p.to_date}</TableCell>
                                 <TableCell className="text-center py-3">
-                                    <Badge className="bg-slate-900 text-white font-black text-[8px] uppercase">{p.ga || '---'}</Badge>
+                                    <Badge className="bg-[#405189] text-white font-black text-[8px] uppercase">{p.ga || '---'}</Badge>
                                 </TableCell>
                                 <TableCell className="text-center py-3 text-[9px] font-bold text-slate-500 uppercase max-w-[150px] truncate" title={p.promotion}>{p.promotion || '---'}</TableCell>
                                 <TableCell className="py-3 text-[10px] font-bold text-slate-500 uppercase">{p.remarks || '---'}</TableCell>
@@ -1021,7 +1021,7 @@ function EmployeesContent() {
       <div className="flex items-center gap-3 no-print">
         <div className="relative group flex-1">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300 group-focus-within:text-primary transition-colors" />
-          <Input placeholder="SEARCH REGISTRY (NAME, CNIC, CODE)..." className="h-12 pl-12 bg-white border-none shadow-sm text-[16px] font-bold uppercase tracking-tight placeholder:text-slate-200 focus-visible:ring-1 focus-visible:ring-primary rounded-xl transition-all" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Input placeholder="SEARCH REGISTRY (NAME, CNIC, CODE)..." className="border-slate-200/50 h-12 pl-12 bg-white border-none shadow-sm text-[16px] font-bold uppercase tracking-tight placeholder:text-slate-200 focus-visible:ring-1 focus-visible:ring-primary rounded-xl transition-all" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         <div className="bg-white px-6 h-12 rounded-xl font-bold text-slate-700 border border-slate-100 flex items-center shadow-sm">
             <span className="text-lg font-black text-primary leading-none tabular-nums mr-2">{sortedEmployees.length}</span>
@@ -1038,8 +1038,8 @@ function EmployeesContent() {
 
       <Card className="border-none shadow-2xl overflow-hidden bg-white rounded-3xl border border-slate-100">
         <Table className="table-fixed w-full">
-          <TableHeader className="bg-slate-900">
-            <TableRow className="border-none hover:bg-slate-900 h-14">
+          <TableHeader className="bg-[#405189]">
+            <TableRow className="border-none hover:bg-white/5 h-14">
               <TableHead className="w-[3%] text-white font-black text-[10px] uppercase p-2 text-center">S.No</TableHead>
               <TableHead className="w-[22%] text-white font-black text-[12px] uppercase p-2 cursor-pointer group" onClick={() => handleSort('name')}>
                 <div className="flex items-center">Name <SortIcon column="name" /></div>
@@ -1134,7 +1134,7 @@ function EmployeesContent() {
             </div>
             <div className="flex items-center gap-3">
               {!canEdit ? (
-                <Button className="h-10 px-6 rounded-md font-medium text-sm bg-slate-900 hover:bg-slate-800 text-white shadow-sm transition-all" onClick={() => setEditingEmp(null)}>Close</Button>
+                <Button className="h-10 px-6 rounded-md font-medium text-sm bg-[#405189] hover:bg-[#405189] text-white shadow-sm transition-all" onClick={() => setEditingEmp(null)}>Close</Button>
               ) : (
                 <>
                   <Button variant="outline" className="h-10 px-4 rounded-md font-medium text-sm border-slate-300 hover:bg-slate-50" onClick={() => setEditingEmp(null)}>Discard</Button>

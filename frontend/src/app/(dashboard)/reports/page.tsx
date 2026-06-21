@@ -227,19 +227,19 @@ export default function ReportsPage() {
       </div>
 
       <Card className="border-none shadow-sm print:hidden bg-white overflow-hidden">
-        <CardHeader className="bg-slate-50 border-b border-slate-100 py-4">
-          <CardTitle className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center italic">
-            <Filter className="h-3 w-3 mr-2" /> Configure Report Layout
+        <CardHeader className="bg-[#405189] text-white py-4">
+          <CardTitle className="text-lg font-black text-white uppercase tracking-[0.2em] flex items-center italic">
+<Filter className="h-5 w-5 mr-3 text-white" /> Configure Report Layout
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="w-full grid grid-cols-2 lg:grid-cols-4 bg-slate-100/50 p-1 rounded-xl mb-4 h-auto">
+            <TabsList className="w-full grid grid-cols-2 lg:grid-cols-4 bg-transparent p-1.5 mb-4 h-auto border-none">
               {columnGroups.map(group => (
                 <TabsTrigger 
                   key={group.id} 
                   value={group.id}
-                  className="text-[10px] font-black uppercase tracking-widest py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all"
+                  className="text-sm font-black uppercase tracking-widest py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all"
                 >
                   {group.title}
                 </TabsTrigger>
@@ -273,11 +273,11 @@ export default function ReportsPage() {
 
       {selectedCols.length > 0 && (
         <Card className="border-none shadow-sm print:hidden bg-white overflow-visible z-50">
-          <CardHeader className="bg-slate-50 border-b border-slate-100 py-3 flex flex-row items-center justify-between">
-            <CardTitle className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center italic m-0">
-              <Search className="h-3 w-3 mr-2" /> Apply Filters
+          <CardHeader className="bg-[#405189] text-white py-4 flex flex-row items-center justify-between rounded-t-xl">
+            <CardTitle className="text-lg font-black text-white uppercase tracking-[0.2em] flex items-center italic m-0">
+<Search className="h-5 w-5 mr-3 text-white" /> Apply Filters
             </CardTitle>
-            <Button variant="ghost" size="sm" onClick={resetFilters} className="h-6 text-[9px] font-black uppercase text-slate-500 hover:text-slate-900">
+            <Button variant="ghost" size="sm" onClick={resetFilters} className="h-6 text-[10px] font-black uppercase text-white/80 hover:text-white hover:bg-white/10">
               <RotateCcw className="h-3 w-3 mr-1" /> Reset Filters
             </Button>
           </CardHeader>
@@ -303,7 +303,7 @@ export default function ReportsPage() {
       <Card className="border-none shadow-2xl bg-white overflow-hidden rounded-3xl border border-slate-100 min-h-[500px]">
         <div className="overflow-x-auto custom-scrollbar">
           <Table>
-            <TableHeader className="bg-slate-900 h-16">
+            <TableHeader className="bg-[#405189] h-16">
               <TableRow className="border-none">
                 <TableHead className="w-12 text-white font-black text-[10px] uppercase p-4 text-center whitespace-nowrap">#</TableHead>
                 {availableColumns.filter(c => selectedCols.includes(c.id)).map(col => (
@@ -337,15 +337,15 @@ export default function ReportsPage() {
 
         <div className="hidden print:flex justify-between items-end p-20 mt-20">
           <div className="text-center">
-            <div className="h-0.5 w-40 bg-slate-900 mb-2 mx-auto" />
+            <div className="h-0.5 w-40 bg-[#405189] mb-2 mx-auto" />
             <p className="text-[9px] font-black uppercase tracking-widest">Office Superintendent</p>
           </div>
           <div className="text-center">
-            <div className="h-0.5 w-40 bg-slate-900 mb-2 mx-auto" />
+            <div className="h-0.5 w-40 bg-[#405189] mb-2 mx-auto" />
             <p className="text-[9px] font-black uppercase tracking-widest">Accountant Officer</p>
           </div>
           <div className="text-right">
-            <div className="h-0.5 w-40 bg-slate-900 ml-auto" />
+            <div className="h-0.5 w-40 bg-[#405189] ml-auto" />
             <p className="text-[9px] font-black uppercase tracking-widest">Appointing Authority</p>
           </div>
         </div>
