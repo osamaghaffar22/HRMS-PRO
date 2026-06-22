@@ -280,6 +280,7 @@ class HRPoolBase(BaseModel):
     lien_start_date: Optional[str] = None
     lien_end_date: Optional[str] = None
     lien_approved_time: Optional[str] = None
+    original_data: Optional[dict] = None
 
 class HRPoolCreate(HRPoolBase):
     pass
@@ -288,5 +289,28 @@ class HRPoolUpdate(HRPoolBase):
     pass
 
 class HRPoolResponse(HRPoolBase):
+    id: int
+    model_config = ConfigDict(from_attributes=True)
+
+# --- Extra Pool ---
+class ExtraBase(BaseModel):
+    s_no: Optional[str] = None
+    name: Optional[str] = None
+    post_name: Optional[str] = None
+    bs: Optional[str] = None
+    branch_office: Optional[str] = None
+    domicile: Optional[str] = None
+    joining_date: Optional[str] = None
+    reason: Optional[str] = None
+    date_of_action: Optional[str] = None
+    original_data: Optional[dict] = None
+
+class ExtraCreate(ExtraBase):
+    pass
+
+class ExtraUpdate(ExtraBase):
+    pass
+
+class ExtraResponse(ExtraBase):
     id: int
     model_config = ConfigDict(from_attributes=True)

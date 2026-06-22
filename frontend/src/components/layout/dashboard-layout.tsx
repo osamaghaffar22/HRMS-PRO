@@ -21,12 +21,14 @@ import {
   Lock,
   ShieldAlert,
   ShieldCheck,
-  Scale
+  Scale,
+  Bell
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import api from '@/lib/api';
+import { useQuery } from '@tanstack/react-query';
 
 const navItems = [
   { label: 'Dashboard', icon: LayoutDashboard, href: '/' },
@@ -92,6 +94,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       router.replace('/login');
     }
   }, [token, router, isMounted, _hasHydrated]);
+
+  const { data: discrepancies } = useQuery({
+    queryKey: ['rationalization-discrepancies-bell'],
+    queryFn: async () => {
+      const res = await api.get('/api/rationalization/discrepancies');
+      return res.data;
+    },
+    enabled: isMounted && !!token && (user?.role === 'Admin' || user?.permissions?.rationalization === true)
+  });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -244,6 +255,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <p className="text-sm font-semibold text-white">{user?.full_name}</p>
               <p className="text-[11px] font-medium text-indigo-200">{user?.role}</p>
             </div>
+            
+            {(user?.role === 'Admin' || user?.permissions?.rationalization === true) && (
+              <Button variant="ghost" size="icon" className="relative h-10 w-10 text-white hover:bg-white/10 rounded-xl" onClick={() => router.push('/rationalization')}>
+                <Bell className="h-5 w-5" />
+                {discrepancies && discrepancies.length > 0 && (
+                  <span className="absolute top-2 right-2 h-2.5 w-2.5 bg-rose-500 rounded-full border-2 border-[#405189] animate-pulse" />
+                )}
+              </Button>
+            )}
+
             <div className="h-10 w-10 rounded-xl bg-white border border-primary/20 shadow-sm flex items-center justify-center text-primary font-bold text-base">
               {user?.username?.[0].toUpperCase()}
             </div>

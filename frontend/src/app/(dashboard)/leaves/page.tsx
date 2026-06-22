@@ -52,6 +52,7 @@ export default function LeavesPage() {
   const [historySearch, setHistorySearch] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [sort, setSort] = useState<{ key: string; order: 'asc' | 'desc' | null }>({ key: '', order: null });
+  const [page, setPage] = useState(1);
   
   const [formData, setFormData] = useState({
     from_date: '',
@@ -92,58 +93,25 @@ export default function LeavesPage() {
     enabled: empSearch.length >= 2
   });
 
-  const { data: allRecords, isLoading: recordsLoading } = useQuery({
-    queryKey: ['leaves-all'],
+  const { data: recordsData, isLoading: recordsLoading } = useQuery({
+    queryKey: ['leaves-all', page, historySearch, statusFilter, categoryFilter, sort],
     queryFn: async () => {
-      const res = await api.get('/api/leaves/');
-      return res.data;
+      let url = `/api/leaves/?skip=${(page - 1) * 100}&limit=100`;
+      if (historySearch) url += `&search=${historySearch}`;
+      if (statusFilter[0] && statusFilter[0] !== 'all') url += `&status=${statusFilter[0]}`;
+      if (categoryFilter[0] && categoryFilter[0] !== 'all') url += `&officer_official=${categoryFilter[0]}`;
+      url += '&active_only=true';
+      const res = await api.get(url);
+      return {
+        data: res.data,
+        totalCount: parseInt(res.headers['x-total-count'] || '0')
+      };
     }
   });
 
-  // Split Logic
-  const { activeRecords, historyRecords } = useMemo(() => {
-    if (!allRecords || !isMounted) return { activeRecords: [], historyRecords: [] };
-    
-    const todayStr = new Date().toISOString().split('T')[0];
-
-    const active = allRecords.filter((r: any) => {
-        const matchesStatus = (statusFilter.includes('all') || statusFilter.includes(r.status));
-        
-        let rCategory = 'Official';
-        if (r.employee_bs) {
-            const bs = parseInt(r.employee_bs);
-            if (!isNaN(bs) && bs >= 16) rCategory = 'Officer';
-        }
-        const matchesCategory = (categoryFilter.includes('all') || categoryFilter.includes(rCategory));
-
-        const isExpired = r.to_date < todayStr;
-        const isActive = !isExpired || r.status !== 'Approved';
-        
-        if (!matchesStatus || !matchesCategory) return false;
-        
-        if (!historySearch || historySearch.trim() === "") return isActive;
-        const s = historySearch.toLowerCase();
-        return isActive && ((r.employee_name?.toLowerCase() || "").includes(s) || r.employee_id.toString().includes(s));
-    });
-
-    const sortedActive = [...active].sort((a, b) => {
-        if (!sort.key || !sort.order) return 0;
-        let valA = (sort.key === 'bs' ? a.employee_bs : (sort.key === 'name' ? a.employee_name : (sort.key === 'post_name' ? a.employee_post : a[sort.key]))) || '';
-        let valB = (sort.key === 'bs' ? b.employee_bs : (sort.key === 'name' ? b.employee_name : (sort.key === 'post_name' ? b.employee_post : b[sort.key]))) || '';
-        if (sort.key === 'bs') {
-            const numA = parseInt(valA) || 0;
-            const numB = parseInt(valB) || 0;
-            return sort.order === 'asc' ? numA - numB : numB - numA;
-        }
-        valA = valA.toString().toLowerCase();
-        valB = valB.toString().toLowerCase();
-        if (valA < valB) return sort.order === 'asc' ? -1 : 1;
-        if (valA > valB) return sort.order === 'asc' ? 1 : -1;
-        return 0;
-    });
-
-    return { activeRecords: sortedActive };
-  }, [allRecords, statusFilter, categoryFilter, historySearch, isMounted, sort]);
+  const activeRecords = recordsData?.data || [];
+  const totalCount = recordsData?.totalCount || 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / 100));
 
   const totalDays = useMemo(() => {
     if (!formData.from_date || !formData.to_date) return 0;
@@ -395,6 +363,18 @@ export default function LeavesPage() {
                   )}
                 </TableBody>
               </Table>
+            {totalCount > 100 && (
+              <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-slate-100 rounded-b-3xl">
+                <div className="text-xs font-bold text-slate-500">
+                  Showing {(page - 1) * 100 + 1} to {Math.min(page * 100, totalCount)} of {totalCount} records
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-500 mr-2">Page {page} of {totalPages}</span>
+                  <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Previous</Button>
+                  <Button variant="outline" size="sm" onClick={() => setPage(p => p + 1)} disabled={page >= totalPages}>Next</Button>
+                </div>
+              </div>
+            )}
             </Card>
         </div>
       </div>

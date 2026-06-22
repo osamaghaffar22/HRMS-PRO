@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_, and_, func, cast, Integer
 from typing import List, Optional
@@ -15,6 +15,9 @@ def get_acr_records(
     category: Optional[str] = None, 
     year: Optional[str] = None,
     emp_id: Optional[int] = None,
+    skip: int = 0,
+    limit: Optional[int] = 50,
+    response: Response = None,
     db: Session = Depends(get_db)
 ):
     query = db.query(models.Employee).options(
@@ -23,33 +26,39 @@ def get_acr_records(
         and_(
             ~func.coalesce(models.Employee.post_status, '').ilike('%Vacant%'),
             models.Employee.name.isnot(None),
-            models.Employee.name != ''
+            models.Employee.name != '',
+            or_(models.Employee.employment_status == 'Active', models.Employee.employment_status == None)
         )
     )
 
     if emp_id:
         query = query.filter(models.Employee.id == emp_id)
     
+    # BPS parsing for logic
+    bps_val = cast(func.regexp_replace(models.Employee.bs, '[^0-9]', '', 'g'), Integer)
+    
+    # Base logic for Officer (ACR perspective: SPA is Official)
+    is_officer_acr = (
+        (bps_val >= 17) |
+        func.coalesce(models.Employee.post_name, '').ilike('%Deputy Assistant Director%')
+    ) & ~func.coalesce(models.Employee.post_name, '').ilike('%Senior Personal Assistant%')
+    
+    is_official_acr = ~is_officer_acr
+    
+    # Exclusion list for lower staff
+    is_not_lower_staff = and_(
+        ~func.coalesce(models.Employee.post_name, '').ilike('%Naib Qasid%'),
+        ~func.coalesce(models.Employee.post_name, '').ilike('%Chowkidar%'),
+        ~func.coalesce(models.Employee.post_name, '').ilike('%Mali%'),
+        ~func.coalesce(models.Employee.post_name, '').ilike('%Sweeper%')
+    )
+
     if category == 'Officer':
-        query = query.filter(
-            and_(
-                models.Employee.officer_official == 'Officer',
-                ~func.coalesce(models.Employee.post_name, '').ilike('%Senior Personal Assistant%')
-            )
-        )
+        query = query.filter(is_officer_acr)
     elif category == 'Official':
-        query = query.filter(
-            or_(
-                and_(
-                    models.Employee.officer_official == 'Official',
-                    ~func.coalesce(models.Employee.post_name, '').ilike('%Naib Qasid%'),
-                    ~func.coalesce(models.Employee.post_name, '').ilike('%Chowkidar%'),
-                    ~func.coalesce(models.Employee.post_name, '').ilike('%Mali%'),
-                    ~func.coalesce(models.Employee.post_name, '').ilike('%Sweeper%')
-                ),
-                func.coalesce(models.Employee.post_name, '').ilike('%Senior Personal Assistant%')
-            )
-        )
+        query = query.filter(and_(is_official_acr, is_not_lower_staff))
+    elif category == 'All':
+        query = query.filter(is_not_lower_staff)
 
     if search:
         search_filter = f"%{search}%"
@@ -59,7 +68,17 @@ def get_acr_records(
         ))
 
     query = query.order_by(cast(models.Employee.s_no, Integer).asc(), cast(models.Employee.bs, Integer).desc(), models.Employee.id.asc())
-    employees = query.limit(500).all()
+    
+    total_count = query.count()
+    if response:
+        response.headers["X-Total-Count"] = str(total_count)
+
+    if skip and skip > 0:
+        query = query.offset(skip)
+    if limit and limit > 0:
+        query = query.limit(limit)
+        
+    employees = query.all()
     
     result = []
     for emp in employees:
@@ -215,3 +234,106 @@ def save_acr_period(
         raise he
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+from fastapi.responses import StreamingResponse
+import pandas as pd
+import io
+
+@router.get("/export/excel")
+def export_acr_excel(
+    search: Optional[str] = None,
+    category: Optional[str] = None, 
+    year: Optional[str] = None,
+    emp_id: Optional[int] = None,
+    db: Session = Depends(get_db)
+):
+    query = db.query(models.Employee).options(
+        joinedload(models.Employee.reports).joinedload(models.ACRReport.periods)
+    ).filter(
+        and_(
+            ~func.coalesce(models.Employee.post_status, '').ilike('%Vacant%'),
+            models.Employee.name.isnot(None),
+            models.Employee.name != '',
+            or_(models.Employee.employment_status == 'Active', models.Employee.employment_status == None)
+        )
+    )
+
+    if emp_id:
+        query = query.filter(models.Employee.id == emp_id)
+
+    if category == 'Officer' or category == 'Form':
+        query = query.filter(
+            and_(
+                models.Employee.officer_official == 'Officer',
+                ~func.coalesce(models.Employee.post_name, '').ilike('%Senior Personal Assistant%')
+            )
+        )
+    elif category == 'Official':
+        query = query.filter(
+            or_(
+                and_(
+                    models.Employee.officer_official == 'Official',
+                    ~func.coalesce(models.Employee.post_name, '').ilike('%Naib Qasid%'),
+                    ~func.coalesce(models.Employee.post_name, '').ilike('%Chowkidar%'),
+                    ~func.coalesce(models.Employee.post_name, '').ilike('%Mali%'),
+                    ~func.coalesce(models.Employee.post_name, '').ilike('%Sweeper%')
+                ),
+                func.coalesce(models.Employee.post_name, '').ilike('%Senior Personal Assistant%')
+            )
+        )
+    elif category == 'All':
+        query = query.filter(
+            ~func.coalesce(models.Employee.post_name, '').ilike('%Naib Qasid%'),
+            ~func.coalesce(models.Employee.post_name, '').ilike('%Chowkidar%'),
+            ~func.coalesce(models.Employee.post_name, '').ilike('%Mali%'),
+            ~func.coalesce(models.Employee.post_name, '').ilike('%Sweeper%')
+        )
+
+    if search:
+        search_filter = f"%{search}%"
+        query = query.filter(or_(
+            models.Employee.name.ilike(search_filter),
+            models.Employee.cnic.ilike(search_filter)
+        ))
+
+    query = query.order_by(cast(models.Employee.s_no, Integer).asc(), cast(models.Employee.bs, Integer).desc(), models.Employee.id.asc())
+    employees = query.all()
+
+    data = []
+    for emp in employees:
+        acr_reports = emp.reports
+        if year:
+            acr_reports = [r for r in acr_reports if r.year == year]
+        
+        for r in acr_reports:
+            for p in r.periods:
+                data.append({
+                    'Emp ID': emp.id,
+                    'Name': emp.name,
+                    'Designation': emp.post_name,
+                    'BPS': emp.bs,
+                    'Office': emp.branch_office,
+                    'Report Year': r.year,
+                    'Status': r.status,
+                    'Period From': p.from_date if p.from_date else '',
+                    'Period To': p.to_date if p.to_date else '',
+                    'Fitness': p.fitness,
+                    'Promotion': p.fitness_for_promotion,
+                    'Remarks': p.adverse_remarks
+                })
+    
+    if not data:
+        data.append({'Message': 'No records found'})
+
+    df = pd.DataFrame(data)
+    stream = io.BytesIO()
+    with pd.ExcelWriter(stream, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='ACR Records')
+    stream.seek(0)
+
+    headers = {
+        'Content-Disposition': 'attachment; filename="acr_export.xlsx"',
+        'Access-Control-Expose-Headers': 'Content-Disposition'
+    }
+    return StreamingResponse(stream, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers=headers)

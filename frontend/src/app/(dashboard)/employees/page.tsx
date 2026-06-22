@@ -524,6 +524,7 @@ function EmployeesContent() {
 
   const [editingEmp, setEditingEmp] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("personal");
+  const [visibleCount, setVisibleCount] = useState(100);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
 
@@ -567,15 +568,13 @@ function EmployeesContent() {
 
   const handleSort = (key: string) => {
     setPage(1);
-    let nextOrder: 'asc' | 'desc' | null = null;
-    if (sort.key !== key) {
-      nextOrder = (key === 'bs') ? 'desc' : 'asc';
-    } else {
-      if (sort.order === 'asc') nextOrder = 'desc';
-      else if (sort.order === 'desc') nextOrder = null;
-      else nextOrder = 'asc';
-    }
-    setSort({ key, order: nextOrder });
+    setSort(prev => {
+      if (prev.key === key) {
+        if (prev.order === 'asc') return { key, order: 'desc' };
+        if (prev.order === 'desc') return { key: '', order: null };
+      }
+      return { key, order: 'asc' };
+    });
   };
 
   const SortIcon = ({ column }: { column: string }) => {
@@ -594,18 +593,36 @@ function EmployeesContent() {
     );
   };
 
-  const { data: employees, isLoading } = useQuery({
-    queryKey: ['employees', filters, search],
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
+    setVisibleCount(100);
+  }, [debouncedSearch, filters]);
+
+  const { data: employeesData, isLoading } = useQuery({
+    queryKey: ['employees', filters, debouncedSearch, visibleCount],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (search) params.append('search', search);
+      if (debouncedSearch) params.append('search', debouncedSearch);
       Object.keys(filters).forEach(key => {
         if (filters[key].length > 0) params.append(key, filters[key].join(','));
       });
+      params.append('skip', '0');
+      params.append('limit', visibleCount.toString());
       const res = await api.get(`/api/employees?${params.toString()}`);
-      return res.data;
+      return {
+        data: res.data,
+        totalCount: parseInt(res.headers['x-total-count'] || '0')
+      };
     }
   });
+
+  const employees = employeesData?.data || [];
+  const totalCount = employeesData?.totalCount || 0;
 
   useEffect(() => {
     if (editId && employees) {
@@ -769,42 +786,50 @@ function EmployeesContent() {
     });
   }, [employees, sort]);
 
-  const handleExport = (type: 'excel' | 'pdf') => {
-    if (!sortedEmployees.length) return;
-    if (type === 'excel') {
-        const ws = XLSX.utils.json_to_sheet(sortedEmployees.map((e: any, i: number) => ({
-            'S.No': i + 1, 
-            'Name': e.name, 
-            'Designation': e.post_name, 
-            'BPS': e.bs, 
-            'Office/Branch': e.branch_office,
-            'Domicile': e.domicile,
-            'Appointment Date': formatDisplayDate(e.joining_date),
-            'Current Station DOJ': formatDisplayDate(e.place_of_posting),
-            'Duration': calculateDuration(e.place_of_posting)
-        })));
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Employees");
-        XLSX.writeFile(wb, `Employees_Export_${new Date().getTime()}.xlsx`);
-    } else {
-        const doc = new jsPDF('landscape');
-        doc.text("Personnel Registry Report", 14, 15);
-        autoTable(doc, {
-            startY: 20,
-            head: [['#', 'Name', 'Designation', 'BPS', 'Office/Branch', 'Domicile', 'Appt. Date', 'Station DOJ', 'Duration']],
-            body: sortedEmployees.map((e: any, i: number) => [
-                i + 1, 
-                e.name, 
-                e.post_name, 
-                e.bs, 
-                e.branch_office, 
-                e.domicile, 
-                formatDisplayDate(e.joining_date), 
-                formatDisplayDate(e.place_of_posting),
-                calculateDuration(e.place_of_posting)
-            ]),
+  const [isExporting, setIsExporting] = useState(false);
+  const handleExport = async (type: 'excel' | 'pdf') => {
+    try {
+        setIsExporting(true);
+        const params = new URLSearchParams();
+        if (debouncedSearch) params.append('search', debouncedSearch);
+        Object.keys(filters).forEach(key => {
+            if (filters[key].length > 0) params.append(key, filters[key].join(','));
         });
-        doc.save(`Employees_Export_${new Date().getTime()}.pdf`);
+
+        if (type === 'excel') {
+            const url = `${api.defaults.baseURL}/api/employees/export/excel?${params.toString()}`;
+            window.open(url, '_blank');
+        } else {
+            // PDF Export
+            params.append('limit', '10000');
+            const res = await api.get(`/api/employees?${params.toString()}`);
+            const fullData = res.data?.items || [];
+            
+            if (!fullData.length) return;
+            const doc = new jsPDF('landscape');
+            doc.text("Personnel Registry Report", 14, 15);
+            autoTable(doc, {
+                startY: 20,
+                head: [['#', 'Name', 'Designation', 'BPS', 'Office/Branch', 'Domicile', 'Appt. Date', 'Station DOJ', 'Duration']],
+                body: fullData.map((e: any, i: number) => [
+                    i + 1, 
+                    e.name || '', 
+                    e.post_name || '', 
+                    e.bs || '', 
+                    e.branch_office || '', 
+                    e.domicile || '', 
+                    formatDisplayDate(e.joining_date), 
+                    formatDisplayDate(e.place_of_posting),
+                    calculateDuration(e.place_of_posting)
+                ]),
+            });
+            doc.save(`Employees_Export_${new Date().getTime()}.pdf`);
+        }
+    } catch (error) {
+        console.error("Export failed:", error);
+        alert("Export failed. Please try again.");
+    } finally {
+        setIsExporting(false);
     }
   };
 
@@ -1024,7 +1049,7 @@ function EmployeesContent() {
           <Input placeholder="SEARCH REGISTRY (NAME, CNIC, CODE)..." className="border-slate-200/50 h-12 pl-12 bg-white border-none shadow-sm text-[16px] font-bold uppercase tracking-tight placeholder:text-slate-200 focus-visible:ring-1 focus-visible:ring-primary rounded-xl transition-all" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         <div className="bg-white px-6 h-12 rounded-xl font-bold text-slate-700 border border-slate-100 flex items-center shadow-sm">
-            <span className="text-lg font-black text-primary leading-none tabular-nums mr-2">{sortedEmployees.length}</span>
+            <span className="text-lg font-black text-primary leading-none tabular-nums mr-2">{totalCount}</span>
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">Records</span>
         </div>
         <div className="flex items-center gap-2 bg-white p-1 rounded-xl shadow-sm border border-slate-100 h-12 px-2">
@@ -1074,9 +1099,9 @@ function EmployeesContent() {
             ) : sortedEmployees.length === 0 ? (
               <TableRow><TableCell colSpan={10} className="text-center py-32 text-slate-300 font-black uppercase text-[10px] italic">No matching registry records</TableCell></TableRow>
             ) : (
-              sortedEmployees.slice((page - 1) * 50, page * 50).map((e: any, i: number) => (
+              sortedEmployees.map((e: any, i: number) => (
                 <TableRow key={e.id} id={`emp-${e.id}`} className={cn("group hover:bg-slate-50 border-b-slate-50 min-h-20 transition-all", highlightId === e.id.toString() && "bg-primary/5 animate-pulse")}>
-                  <TableCell className="text-center font-black text-slate-300 text-[11px] p-2">{(page - 1) * 50 + i + 1}</TableCell>
+                  <TableCell className="text-center font-black text-slate-300 text-[11px] p-2">{(page - 1) * 100 + i + 1}</TableCell>
                   <TableCell className="p-2 whitespace-normal break-words">
                       <span className="font-black text-slate-900 text-[14px] uppercase tracking-tight leading-tight">{e.name}</span>
                   </TableCell>
@@ -1107,17 +1132,20 @@ function EmployeesContent() {
             )}
           </TableBody>
         </Table>
-        {sortedEmployees?.length > 50 && (
-          <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-slate-100">
-            <div className="text-xs font-bold text-slate-500">
-              Showing {(page - 1) * 50 + 1} to {Math.min(page * 50, sortedEmployees.length)} of {sortedEmployees.length} records
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Previous</Button>
-              <Button variant="outline" size="sm" onClick={() => setPage(p => p + 1)} disabled={page * 50 >= sortedEmployees.length}>Next</Button>
-            </div>
+        {totalCount > visibleCount && (
+          <div className="flex items-center justify-center px-4 py-4 bg-white border-t border-slate-100">
+            <Button 
+              variant="outline" 
+              className="bg-slate-50 text-slate-600 font-bold hover:bg-slate-100 px-8" 
+              onClick={() => setVisibleCount(v => v + 100)}
+            >
+              Load More Data
+            </Button>
           </div>
         )}
+        <div className="text-center pb-4 text-xs font-bold text-slate-400">
+          Showing {Math.min(visibleCount, totalCount)} of {totalCount} records
+        </div>
       </Card>
 
       <Dialog open={!!editingEmp} onOpenChange={(open) => !open && setEditingEmp(null)}>

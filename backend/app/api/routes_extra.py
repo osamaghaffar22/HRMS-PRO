@@ -6,10 +6,10 @@ from app import models, schemas
 from app.db.database import get_db
 from app.core.auth_utils import PermissionChecker
 
-router = APIRouter(prefix="/api/hr-pool", tags=["hr-pool"], dependencies=[Depends(PermissionChecker(["employees"]))])
+router = APIRouter(prefix="/api/extra", tags=["extra"], dependencies=[Depends(PermissionChecker(["employees"]))])
 
-@router.get("/", response_model=List[schemas.HRPoolResponse])
-def get_hr_pool(
+@router.get("/", response_model=List[schemas.ExtraResponse])
+def get_extra(
     search: Optional[str] = None,
     sort_by: Optional[str] = None,
     sort_order: Optional[str] = None,
@@ -18,25 +18,25 @@ def get_hr_pool(
     response: Response = None,
     db: Session = Depends(get_db)
 ):
-    query = db.query(models.HRPool)
+    query = db.query(models.Extra)
 
     if search and search.strip():
         search_filter = f"%{search.strip()}%"
         query = query.filter(or_(
-            models.HRPool.name.ilike(search_filter),
-            models.HRPool.post_name.ilike(search_filter),
-            models.HRPool.bs.ilike(search_filter),
-            models.HRPool.branch_office.ilike(search_filter)
+            models.Extra.name.ilike(search_filter),
+            models.Extra.post_name.ilike(search_filter),
+            models.Extra.bs.ilike(search_filter),
+            models.Extra.branch_office.ilike(search_filter)
         ))
 
     if sort_by and sort_order in ['asc', 'desc']:
         order_fn = asc if sort_order == 'asc' else desc
-        if hasattr(models.HRPool, sort_by):
-            query = query.order_by(order_fn(getattr(models.HRPool, sort_by)))
+        if hasattr(models.Extra, sort_by):
+            query = query.order_by(order_fn(getattr(models.Extra, sort_by)))
         else:
-            query = query.order_by(desc(models.HRPool.id))
+            query = query.order_by(desc(models.Extra.id))
     else:
-        query = query.order_by(desc(models.HRPool.id))
+        query = query.order_by(desc(models.Extra.id))
 
     total_count = query.count()
     if response:
@@ -49,17 +49,17 @@ def get_hr_pool(
 
     return query.all()
 
-@router.post("/", response_model=schemas.HRPoolResponse)
-def create_hr_pool(item: schemas.HRPoolCreate, db: Session = Depends(get_db)):
-    db_item = models.HRPool(**item.model_dump())
+@router.post("/", response_model=schemas.ExtraResponse)
+def create_extra(item: schemas.ExtraCreate, db: Session = Depends(get_db)):
+    db_item = models.Extra(**item.model_dump())
     db.add(db_item)
     db.commit()
     db.refresh(db_item)
     return db_item
 
-@router.put("/{item_id}", response_model=schemas.HRPoolResponse)
-def update_hr_pool(item_id: int, item: schemas.HRPoolUpdate, db: Session = Depends(get_db)):
-    db_item = db.query(models.HRPool).filter(models.HRPool.id == item_id).first()
+@router.put("/{item_id}", response_model=schemas.ExtraResponse)
+def update_extra(item_id: int, item: schemas.ExtraUpdate, db: Session = Depends(get_db)):
+    db_item = db.query(models.Extra).filter(models.Extra.id == item_id).first()
     if not db_item:
         raise HTTPException(status_code=404, detail="Not found")
         
@@ -71,37 +71,25 @@ def update_hr_pool(item_id: int, item: schemas.HRPoolUpdate, db: Session = Depen
     db.refresh(db_item)
     return db_item
 
-@router.delete("/{item_id}")
-def delete_hr_pool(item_id: int, db: Session = Depends(get_db)):
-    db_item = db.query(models.HRPool).filter(models.HRPool.id == item_id).first()
-    if not db_item:
-        raise HTTPException(status_code=404, detail="Not found")
-    
-    db.delete(db_item)
-    db.commit()
-    return {"message": "Deleted successfully"}
-
 @router.post("/{item_id}/revert")
-def revert_hr_pool(
+def revert_extra(
     item_id: int, 
     db: Session = Depends(get_db),
     current_user=Depends(PermissionChecker(["employees"]))
 ):
-    pool_item = db.query(models.HRPool).filter(models.HRPool.id == item_id).first()
+    pool_item = db.query(models.Extra).filter(models.Extra.id == item_id).first()
     if not pool_item:
-        raise HTTPException(status_code=404, detail="HR Pool record not found")
+        raise HTTPException(status_code=404, detail="Extra record not found")
 
     if not pool_item.original_data:
         raise HTTPException(status_code=400, detail="Cannot revert: original employee data is missing")
 
     orig = pool_item.original_data
-    # 1. Try to find the exact original seat if it is still Vacant
     emp = db.query(models.Employee).filter(
         models.Employee.id == orig.get("id"),
         models.Employee.name.ilike('%Vacant%')
     ).first()
 
-    # 2. Try to find ANY Vacant seat with the same post and branch
     if not emp:
         emp = db.query(models.Employee).filter(
             models.Employee.post_name == orig.get("post_name"),
@@ -109,20 +97,27 @@ def revert_hr_pool(
             models.Employee.name.ilike('%Vacant%')
         ).first()
 
-    # 3. If no vacant seat, just create a new active seat (might exceed rationalization, but ensures data isn't lost)
     if not emp:
         emp = models.Employee()
         db.add(emp)
 
-    # Restore all attributes (except id if we are creating new)
     for key, value in orig.items():
         if key != "id" and hasattr(emp, key):
             setattr(emp, key, value)
     
     emp.employment_status = "Active"
     
-    # Remove from HR Pool
     db.delete(pool_item)
     db.commit()
     
     return {"message": "Employee reverted successfully"}
+
+@router.delete("/{item_id}")
+def delete_extra(item_id: int, db: Session = Depends(get_db)):
+    db_item = db.query(models.Extra).filter(models.Extra.id == item_id).first()
+    if not db_item:
+        raise HTTPException(status_code=404, detail="Not found")
+    
+    db.delete(db_item)
+    db.commit()
+    return {"message": "Deleted successfully"}

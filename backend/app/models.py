@@ -205,3 +205,24 @@ class HRPool(Base):
     lien_start_date = Column(String)
     lien_end_date = Column(String)
     lien_approved_time = Column(String)
+    
+    # Store full employee data for reversion
+    original_data = Column(JSON, nullable=True)
+
+class Extra(Base):
+    __tablename__ = "extra_pool"
+    id = Column(Integer, primary_key=True, index=True)
+    s_no = Column(String)
+    name = Column(String, index=True)
+    post_name = Column(String, index=True)
+    bs = Column(String, index=True)
+    branch_office = Column(String, index=True)
+    domicile = Column(String)
+    joining_date = Column(String)
+    
+    # Extra specific columns
+    reason = Column(String) # Resigned, Death in Service, etc.
+    date_of_action = Column(String)
+    
+    # Store full employee data for reversion
+    original_data = Column(JSON, nullable=True)

@@ -45,6 +45,8 @@ export default function RationalizationPage() {
   const [showDialog, setShowDialog] = useState(false);
   const [page, setPage] = useState(1);
   const [editingItem, setEditingItem] = useState<any>(null);
+  const [desigSearch, setDesigSearch] = useState('');
+  const [officeSearch, setOfficeSearch] = useState('');
   const [formData, setFormData] = useState({
     wing_division: '',
     region: '',
@@ -63,7 +65,15 @@ export default function RationalizationPage() {
   const { data: quotas, isLoading } = useQuery({
     queryKey: ['rationalization-status'],
     queryFn: async () => {
-      const res = await api.get('/api/rationalization/status');
+      const res = await api.get('/api/rationalization/status?limit=10000');
+      return res.data;
+    }
+  });
+
+  const { data: summaryStats, isLoading: isLoadingSummary } = useQuery({
+    queryKey: ['rationalization-summary'],
+    queryFn: async () => {
+      const res = await api.get('/api/rationalization/summary');
       return res.data;
     }
   });
@@ -192,11 +202,51 @@ export default function RationalizationPage() {
         )}
       </div>
 
+      {!isLoadingSummary && summaryStats && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <Card className="border-none shadow-sm bg-gradient-to-br from-indigo-500 to-blue-600 rounded-2xl overflow-hidden h-28">
+            <CardContent className="p-4 flex flex-col justify-center items-center text-white h-full relative">
+              <Scale className="absolute right-[-10px] bottom-[-10px] h-20 w-20 opacity-10" />
+              <p className="text-[9px] font-black uppercase tracking-[0.2em] opacity-80 mb-1 z-10">Total Sanctioned Seats</p>
+              <h2 className="text-4xl font-black tracking-tighter z-10">{summaryStats.totalSeats}</h2>
+            </CardContent>
+          </Card>
+          <Card className="border-none shadow-sm bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl overflow-hidden h-28">
+            <CardContent className="p-4 flex flex-col justify-center items-center text-white h-full relative">
+              <div className="absolute right-[-10px] bottom-[-10px] h-20 w-20 opacity-10 bg-white rounded-full flex items-center justify-center"><div className="h-10 w-10 bg-emerald-600 rounded-full" /></div>
+              <p className="text-[9px] font-black uppercase tracking-[0.2em] opacity-80 mb-1 z-10">Total Filled Seats</p>
+              <h2 className="text-4xl font-black tracking-tighter z-10">{summaryStats.totalFilled}</h2>
+            </CardContent>
+          </Card>
+          <Card className="border-none shadow-sm bg-gradient-to-br from-rose-500 to-red-600 rounded-2xl overflow-hidden h-28">
+            <CardContent className="p-4 flex flex-col justify-center items-center text-white h-full relative">
+              <div className="absolute right-[-10px] bottom-[-10px] h-20 w-20 opacity-10 border-[10px] border-white rounded-full" />
+              <p className="text-[9px] font-black uppercase tracking-[0.2em] opacity-80 mb-1 z-10">Total Vacant / Excess</p>
+              <h2 className="text-4xl font-black tracking-tighter z-10">{summaryStats.totalVacant > 0 ? summaryStats.totalVacant : Math.abs(summaryStats.totalVacant)} {summaryStats.totalVacant < 0 ? 'EXCESS' : ''}</h2>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       <Card className="border-none shadow-2xl bg-white rounded-3xl overflow-hidden border border-slate-100 min-h-[400px]">
-        <CardHeader className="bg-[#405189] text-white p-6">
+        <CardHeader className="bg-[#405189] text-white p-6 flex flex-row items-center justify-between">
           <CardTitle className="text-lg font-black uppercase tracking-[0.2em] flex items-center italic text-white">
             <Scale className="h-5 w-5 mr-3 text-white" /> Active Post Quotas
           </CardTitle>
+          <div className="flex gap-2">
+            <Input 
+              placeholder="FILTER DESIGNATION..." 
+              value={desigSearch} 
+              onChange={(e) => setDesigSearch(e.target.value)}
+              className="h-9 w-60 bg-white/10 border-none text-white placeholder:text-white/50 text-xs font-bold focus-visible:ring-1 focus-visible:ring-white rounded-lg"
+            />
+            <Input 
+              placeholder="FILTER OFFICE..." 
+              value={officeSearch} 
+              onChange={(e) => setOfficeSearch(e.target.value)}
+              className="h-9 w-60 bg-white/10 border-none text-white placeholder:text-white/50 text-xs font-bold focus-visible:ring-1 focus-visible:ring-white rounded-lg"
+            />
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           {isLoading ? (
@@ -226,7 +276,10 @@ export default function RationalizationPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {quotas.slice((page - 1) * 50, page * 50).map((q: any) => {
+                  {quotas.filter((q: any) => 
+                    q.post_name?.toLowerCase().includes(desigSearch.toLowerCase()) && 
+                    q.branch_office?.toLowerCase().includes(officeSearch.toLowerCase())
+                  ).slice((page - 1) * 50, page * 50).map((q: any) => {
                     const isFull = q.current_count >= q.allocated_posts;
                     const isOver = q.current_count > q.allocated_posts;
                     return (

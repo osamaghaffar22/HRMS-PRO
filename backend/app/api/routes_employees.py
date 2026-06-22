@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Response
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, text, case, cast, Integer, desc, asc
 from typing import List, Optional
@@ -78,7 +78,9 @@ def get_employees(
     sort_by: Optional[str] = None,
     sort_order: Optional[str] = None,
     hr_pool_only: Optional[bool] = False,
-    limit: Optional[int] = 500,
+    skip: int = 0,
+    limit: Optional[int] = 50,
+    response: Response = None,
     db: Session = Depends(get_db),
     current_user=Depends(PermissionChecker(["employees", "reports", "transfers", "leaves", "acr", "custom"]))
 ):
@@ -129,8 +131,15 @@ def get_employees(
     else:
         query = query.order_by(cast(models.Employee.s_no, Integer).asc(), cast(models.Employee.bs, Integer).desc(), models.Employee.id.asc())
 
+    total_count = query.count()
+    if response:
+        response.headers["X-Total-Count"] = str(total_count)
+
+    if skip and skip > 0:
+        query = query.offset(skip)
     if limit and limit > 0:
         query = query.limit(limit)
+        
     return query.all()
 
 @router.get("/{emp_id}", response_model=schemas.Employee)
@@ -167,7 +176,9 @@ def get_officials_discrepancies(db: Session = Depends(get_db), current_user=Depe
         (models.Employee.officer_official.ilike('%official%'))
     )
 
-    employees = db.query(models.Employee).filter(is_filled, is_not_hr_pool).order_by(
+    is_active = (models.Employee.employment_status == 'Active') | (models.Employee.employment_status == None)
+
+    employees = db.query(models.Employee).filter(is_filled, is_not_hr_pool, is_active).order_by(
         cast(models.Employee.s_no, Integer).asc(),
         cast(models.Employee.bs, Integer).desc(),
         models.Employee.id.asc()
@@ -204,12 +215,14 @@ def get_rationalization_errors(db: Session = Depends(get_db), current_user=Depen
         (~models.Employee.post_status.ilike('%vacant%'))
     )
 
+    is_active = (models.Employee.employment_status == 'Active') | (models.Employee.employment_status == None)
+
     from sqlalchemy import func
     emp_counts = db.query(
         models.Employee.branch_office,
         models.Employee.post_name,
         func.count(models.Employee.id).label("current_count")
-    ).filter(is_filled, is_not_hr_pool).group_by(models.Employee.branch_office, models.Employee.post_name).all()
+    ).filter(is_filled, is_not_hr_pool, is_active).group_by(models.Employee.branch_office, models.Employee.post_name).all()
     
     count_map = {}
     for branch, post, count in emp_counts:
@@ -227,7 +240,7 @@ def get_rationalization_errors(db: Session = Depends(get_db), current_user=Depen
         return []
 
     # Fetch all employees in these overstaffed branches/posts
-    employees = db.query(models.Employee).filter(is_filled, is_not_hr_pool).order_by(
+    employees = db.query(models.Employee).filter(is_filled, is_not_hr_pool, is_active).order_by(
         cast(models.Employee.s_no, Integer).asc(),
         cast(models.Employee.bs, Integer).desc(),
         models.Employee.id.asc()
@@ -260,33 +273,58 @@ def separate_employee(
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
 
-    # Update current employee status
-    emp.employment_status = request.separation_type
-    emp.separation_date = request.separation_date
+    # Serialize employee data
+    import json
+    from fastapi.encoders import jsonable_encoder
+    original_data = jsonable_encoder(emp)
 
-    # Duplicate the seat structure
-    new_seat = models.Employee(
-        code=emp.code,
-        s_no=emp.s_no,
-        officer_official=emp.officer_official,
-        hq_field=emp.hq_field,
-        head_office=emp.head_office,
-        wing_division=emp.wing_division,
-        section_district=emp.section_district,
-        branch_office=emp.branch_office,
-        bs=emp.bs,
-        post_name=emp.post_name,
-        cadre_type=emp.cadre_type,
-        name="Vacant",
-        post_status="Vacant",
-        employment_status="Active"
-    )
-    db.add(new_seat)
+    if request.separation_type in ['Lien', 'Deputation']:
+        new_pool_entry = models.HRPool(
+            s_no=emp.s_no,
+            name=emp.name,
+            post_name=emp.post_name,
+            bs=emp.bs,
+            branch_office=emp.branch_office,
+            domicile=emp.domicile,
+            joining_date=emp.joining_date,
+            lien_start_date=request.separation_date,
+            original_data=original_data
+        )
+        db.add(new_pool_entry)
+    else:
+        new_extra_entry = models.Extra(
+            s_no=emp.s_no,
+            name=emp.name,
+            post_name=emp.post_name,
+            bs=emp.bs,
+            branch_office=emp.branch_office,
+            domicile=emp.domicile,
+            joining_date=emp.joining_date,
+            reason=request.separation_type,
+            date_of_action=request.separation_date,
+            original_data=original_data
+        )
+        db.add(new_extra_entry)
+
+    # Empty the current seat
+    emp.name = "Vacant"
+    emp.post_status = "Vacant"
+    emp.father_name = None
+    emp.cnic = None
+    emp.date_of_birth = None
+    emp.joining_date = None
+    emp.place_of_posting = None
+    emp.contact_number = None
+    # Keep the seat structure (bs, branch, post_name, etc.) intact
+    
     db.commit()
-    return {"message": "Employee separated and seat vacated"}
+    return {"message": "Employee moved to " + ("HR Pool" if request.separation_type in ['Lien', 'Deputation'] else "Extra") + " and seat vacated"}
 
 @router.get("/extra/all", response_model=List[schemas.Employee])
 def get_extra_employees(
+    skip: int = 0,
+    limit: Optional[int] = 100,
+    response: Response = None,
     db: Session = Depends(get_db),
     current_user=Depends(PermissionChecker(["employees", "reports"]))
 ):
@@ -298,6 +336,92 @@ def get_extra_employees(
         cast(models.Employee.bs, Integer).desc(),
         models.Employee.id.asc()
     )
+    
+    total_count = query.count()
+    if response:
+        response.headers["X-Total-Count"] = str(total_count)
+        
+    if skip and skip > 0:
+        query = query.offset(skip)
     if limit and limit > 0:
         query = query.limit(limit)
+        
     return query.all()
+
+
+from fastapi.responses import StreamingResponse
+import pandas as pd
+import io
+
+@router.get("/export/excel")
+def export_employees_excel(
+    search: Optional[str] = None,
+    officer_official: Optional[str] = None,
+    hq_field: Optional[str] = None,
+    region: Optional[str] = None,
+    branch_office: Optional[str] = None,
+    post_name: Optional[str] = None,
+    post_status: Optional[str] = None,
+    domicile: Optional[str] = None,
+    hr_pool_only: Optional[bool] = False,
+    db: Session = Depends(get_db)
+):
+    query = db.query(models.Employee).filter((models.Employee.employment_status == 'Active') | (models.Employee.employment_status == None))
+
+    is_hr_pool = (models.Employee.branch_office.ilike('%HR POOL%')) | (models.Employee.hq_field.ilike('%HR POOL%'))
+    if hr_pool_only:
+        query = query.filter(is_hr_pool)
+    else:
+        query = query.filter(~is_hr_pool)
+
+    def apply_multi_filter(q, col, val):
+        if not val or val.lower() == 'all': return q
+        vals = [v for v in val.split(',') if v]
+        if not vals: return q
+        return q.filter(col.in_(vals))
+
+    query = apply_multi_filter(query, models.Employee.officer_official, officer_official)
+    query = apply_multi_filter(query, models.Employee.hq_field, hq_field)
+    query = apply_multi_filter(query, models.Employee.section_district, region) 
+    query = apply_multi_filter(query, models.Employee.branch_office, branch_office)
+    query = apply_multi_filter(query, models.Employee.post_name, post_name)
+    query = apply_multi_filter(query, models.Employee.post_status, post_status)
+    query = apply_multi_filter(query, models.Employee.domicile, domicile)
+
+    if search:
+        search_filter = f"%{search}%"
+        query = query.filter(
+            or_(
+                models.Employee.name.ilike(search_filter),
+                models.Employee.code.ilike(search_filter),
+                models.Employee.cnic.ilike(search_filter)
+            )
+        )
+
+    query = query.order_by(models.Employee.s_no.asc(), models.Employee.bs.desc())
+    employees = query.all()
+
+    data = []
+    for i, emp in enumerate(employees):
+        data.append({
+            'S.No': i + 1,
+            'Name': emp.name,
+            'Designation': emp.post_name,
+            'BPS': emp.bs,
+            'Office': emp.branch_office,
+            'CNIC': emp.cnic,
+            'Domicile': emp.domicile,
+            'Status': emp.employment_status
+        })
+
+    df = pd.DataFrame(data)
+    stream = io.BytesIO()
+    with pd.ExcelWriter(stream, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Employees')
+    stream.seek(0)
+
+    headers = {
+        'Content-Disposition': 'attachment; filename="employees_export.xlsx"',
+        'Access-Control-Expose-Headers': 'Content-Disposition'
+    }
+    return StreamingResponse(stream, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers=headers)

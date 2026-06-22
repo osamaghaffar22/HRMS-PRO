@@ -550,6 +550,7 @@ function EmployeesContent() {
   }, [searchParams]);
 
   const [sort, setSort] = useState<{ key: string; order: 'asc' | 'desc' | null }>({ key: '', order: null });
+  const [page, setPage] = useState(1);
 
   const handleSort = (key: string) => {
     let nextOrder: 'asc' | 'desc' | null = null;
@@ -579,19 +580,33 @@ function EmployeesContent() {
     );
   };
 
-  const { data: employees, isLoading } = useQuery({
-    queryKey: ['employees', filters, search],
+  const { data: queryData, isLoading } = useQuery({
+    queryKey: ['employees', filters, search, page, sort],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (search) params.append('search', search);
       Object.keys(filters).forEach(key => {
         if (filters[key].length > 0) params.append(key, filters[key].join(','));
       });
+      if (sort.key) {
+        params.append('sort_by', sort.key);
+        if (sort.order) params.append('sort_order', sort.order);
+      }
       params.append('hr_pool_only', 'true');
+      params.append('skip', ((page - 1) * 100).toString());
+      params.append('limit', '100');
+      
       const res = await api.get(`/api/hr-pool?${params.toString()}`);
-      return res.data;
+      return {
+        data: res.data,
+        totalCount: parseInt(res.headers['x-total-count'] || '0')
+      };
     }
   });
+
+  const employees = queryData?.data || [];
+  const totalCount = queryData?.totalCount || 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / 100));
 
   const updateEmpMutation = useMutation({
     mutationFn: (data: { id: number; data: any }) => api.put(`/api/hr-pool/${data.id}`, data.data),
@@ -628,6 +643,17 @@ function EmployeesContent() {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       setEditingEmp(null);
       alert("Employee record terminated successfully.");
+    }
+  });
+
+  const revertMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await api.post(`/api/hr-pool/${id}/revert`);
+      return res.data;
+    },
+    onSuccess: () => {
+      alert("Employee successfully reverted to active seat");
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
     }
   });
 
@@ -700,35 +726,7 @@ function EmployeesContent() {
     return Array.from(new Set(branches)).sort();
   }, [filterOptions, filters.wing_division, filters.region]);
 
-  const sortedEmployees = useMemo(() => {
-    if (!employees) return [];
-    if (!sort.key || !sort.order) return employees;
-
-    return [...employees].sort((a, b) => {
-      let valA = a[sort.key] || '';
-      let valB = b[sort.key] || '';
-      
-      // Special handling for BPS (Numbers)
-      if (sort.key === 'bs') {
-        const numA = parseInt(valA) || 0;
-        const numB = parseInt(valB) || 0;
-        return sort.order === 'asc' ? numA - numB : numB - numA;
-      }
-
-      // Special handling for Dates
-      if (['joining_date', 'place_of_posting'].includes(sort.key)) {
-        const dateA = new Date(valA).getTime() || 0;
-        const dateB = new Date(valB).getTime() || 0;
-        return sort.order === 'asc' ? dateA - dateB : dateB - dateA;
-      }
-
-      valA = valA.toString().toLowerCase();
-      valB = valB.toString().toLowerCase();
-      if (valA < valB) return sort.order === 'asc' ? -1 : 1;
-      if (valA > valB) return sort.order === 'asc' ? 1 : -1;
-      return 0;
-    });
-  }, [employees, sort]);
+  const sortedEmployees = employees;
 
   const handleExport = (type: 'excel' | 'pdf') => {
     if (!sortedEmployees.length) return;
@@ -1041,7 +1039,7 @@ function EmployeesContent() {
             ) : (
               sortedEmployees.map((e: any, i: number) => (
                 <TableRow key={e.id} id={`emp-${e.id}`} className={cn("group hover:bg-slate-50 border-b-slate-50 min-h-20 transition-all", highlightId === e.id.toString() && "bg-primary/5 animate-pulse")}>
-                  <TableCell className="text-center font-black text-slate-300 text-[11px] p-2">{i + 1}</TableCell>
+                  <TableCell className="text-center font-black text-slate-300 text-[11px] p-2">{(page - 1) * 100 + i + 1}</TableCell>
                   <TableCell className="p-2 whitespace-normal break-words">
                       <span className="font-black text-slate-900 text-[14px] uppercase tracking-tight leading-tight">{e.name}</span>
                   </TableCell>
@@ -1067,6 +1065,11 @@ function EmployeesContent() {
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-all" title={canEdit ? "Edit Employee" : "View master record"} onClick={() => setEditingEmp(e)}>
                         {canEdit ? <Edit2 className="h-3.5 w-3.5" /> : <Search className="h-3.5 w-3.5" />}
                       </Button>
+                      {canEdit && (
+                        <Button variant="outline" size="sm" onClick={() => { if(window.confirm('Are you sure you want to revert this employee back to active status?')) revertMutation.mutate(e.id); }} className="h-8 hover:bg-emerald-50 text-emerald-600 border-emerald-200">
+                          Revert
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, status, Security, Backgroun
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from sqlalchemy import func, case, text
+from sqlalchemy import func, case, text, cast, Integer
 from datetime import timedelta
 from typing import List, Optional
 from app import models, schemas
@@ -25,10 +25,11 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Total-Count"],
 )
 
 # Import and include routers
-from app.api import routes_transfers, routes_leaves, routes_custom, routes_employees, routes_sync, routes_acr, routes_files, routes_users, routes_rationalization, routes_hrpool
+from app.api import routes_transfers, routes_leaves, routes_custom, routes_employees, routes_sync, routes_acr, routes_files, routes_users, routes_rationalization, routes_hrpool, routes_extra
 app.include_router(routes_transfers.router)
 app.include_router(routes_leaves.router)
 app.include_router(routes_custom.router)
@@ -39,6 +40,7 @@ app.include_router(routes_files.router)
 app.include_router(routes_users.router)
 app.include_router(routes_rationalization.router)
 app.include_router(routes_hrpool.router)
+app.include_router(routes_extra.router)
 
 @app.get("/admin/test")
 async def admin_only_endpoint(current_user: models.User = Depends(RoleChecker(["Admin"]))):
@@ -67,41 +69,57 @@ async def read_users_me(current_user: models.User = Depends(get_current_user)):
 def get_overall_stats(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     # HR Pool Definition: If Branch/Office or HQ/Field is HR Pool
     is_hr_pool = (models.Employee.branch_office.ilike('%HR POOL%')) | (models.Employee.hq_field.ilike('%HR POOL%'))
-    is_not_hr_pool = ~is_hr_pool
+    
+    # Active Employees only
+    is_active = (models.Employee.employment_status == 'Active') | (models.Employee.employment_status == None)
+
+    is_not_hr_pool = (~is_hr_pool) & is_active
 
     # Simple logic: 'Vacant' if name contains "Vacant", 'Filled' if it's a real name
     is_vacant = models.Employee.name.ilike('%Vacant%')
     is_filled = (~models.Employee.name.ilike('%Vacant%')) & (models.Employee.name.isnot(None)) & (models.Employee.name != '')
 
-    # Single query to get all counts based on your logic
+    # Officer/Official Rules
+    is_officer = (
+        (cast(func.regexp_replace(models.Employee.bs, '[^0-9]', '', 'g'), Integer) >= 17) |
+        func.coalesce(models.Employee.post_name, '').ilike('%Senior Personal Assistant%') |
+        func.coalesce(models.Employee.post_name, '').ilike('%Deputy Assistant Director%')
+    )
+    is_official = ~is_officer
+    
+    # HQ/Field Rules
+    is_hq = models.Employee.hq_field.ilike('HQ')
+    is_field = models.Employee.hq_field.ilike('Field')
+
+    # Single query to get all counts based on new strict logic
     res = db.query(
         # All Staff
         func.count(case((is_not_hr_pool, 1))).label('total_all'),
         func.count(case((is_filled & is_not_hr_pool, 1))).label('filled_all'),
         
-        # Officers (Filtered by 'Officer' in officer_official column)
-        func.count(case(((models.Employee.officer_official == 'Officer') & is_not_hr_pool, 1))).label('total_officers'),
-        func.count(case(((models.Employee.officer_official == 'Officer') & is_filled & is_not_hr_pool, 1))).label('filled_officers'),
+        # Officers
+        func.count(case((is_officer & is_not_hr_pool, 1))).label('total_officers'),
+        func.count(case((is_officer & is_filled & is_not_hr_pool, 1))).label('filled_officers'),
         
-        # Officials (Filtered by 'Official' in officer_official column)
-        func.count(case(((models.Employee.officer_official == 'Official') & is_not_hr_pool, 1))).label('total_officials'),
-        func.count(case(((models.Employee.officer_official == 'Official') & is_filled & is_not_hr_pool, 1))).label('filled_officials'),
+        # Officials
+        func.count(case((is_official & is_not_hr_pool, 1))).label('total_officials'),
+        func.count(case((is_official & is_filled & is_not_hr_pool, 1))).label('filled_officials'),
         
         # HQ Officers
-        func.count(case(((models.Employee.hq_field == 'HQ') & (models.Employee.officer_official == 'Officer') & is_not_hr_pool, 1))).label('total_hq_officers'),
-        func.count(case(((models.Employee.hq_field == 'HQ') & (models.Employee.officer_official == 'Officer') & is_filled & is_not_hr_pool, 1))).label('filled_hq_officers'),
+        func.count(case((is_hq & is_officer & is_not_hr_pool, 1))).label('total_hq_officers'),
+        func.count(case((is_hq & is_officer & is_filled & is_not_hr_pool, 1))).label('filled_hq_officers'),
         
         # Field Officers
-        func.count(case(((models.Employee.hq_field == 'Field') & (models.Employee.officer_official == 'Officer') & is_not_hr_pool, 1))).label('total_field_officers'),
-        func.count(case(((models.Employee.hq_field == 'Field') & (models.Employee.officer_official == 'Officer') & is_filled & is_not_hr_pool, 1))).label('filled_field_officers'),
+        func.count(case((is_field & is_officer & is_not_hr_pool, 1))).label('total_field_officers'),
+        func.count(case((is_field & is_officer & is_filled & is_not_hr_pool, 1))).label('filled_field_officers'),
         
         # HQ Officials
-        func.count(case(((models.Employee.hq_field == 'HQ') & (models.Employee.officer_official == 'Official') & is_not_hr_pool, 1))).label('total_hq_officials'),
-        func.count(case(((models.Employee.hq_field == 'HQ') & (models.Employee.officer_official == 'Official') & is_filled & is_not_hr_pool, 1))).label('filled_hq_officials'),
+        func.count(case((is_hq & is_official & is_not_hr_pool, 1))).label('total_hq_officials'),
+        func.count(case((is_hq & is_official & is_filled & is_not_hr_pool, 1))).label('filled_hq_officials'),
         
         # Field Officials
-        func.count(case(((models.Employee.hq_field == 'Field') & (models.Employee.officer_official == 'Official') & is_not_hr_pool, 1))).label('total_field_officials'),
-        func.count(case(((models.Employee.hq_field == 'Field') & (models.Employee.officer_official == 'Official') & is_filled & is_not_hr_pool, 1))).label('filled_field_officials')
+        func.count(case((is_field & is_official & is_not_hr_pool, 1))).label('total_field_officials'),
+        func.count(case((is_field & is_official & is_filled & is_not_hr_pool, 1))).label('filled_field_officials')
     ).first()
 
     total_hr_pool = db.query(models.HRPool).count()
@@ -124,26 +142,49 @@ def get_overall_stats(db: Session = Depends(get_db), current_user: models.User =
 
 @app.get("/api/stats/designation")
 def get_designation_stats(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    # 1. Total allocated posts per designation from Rationalization
+    rat_totals = dict(db.query(
+        models.Rationalization.post_name,
+        func.sum(models.Rationalization.allocated_posts)
+    ).group_by(models.Rationalization.post_name).all())
+
+    # 2. Filled posts per designation from active Employees
     is_not_hr_pool = ~(
         (models.Employee.branch_office.ilike('%HR POOL%')) | 
         (models.Employee.hq_field.ilike('%HR POOL%'))
     )
+    is_filled = (~models.Employee.name.ilike('%Vacant%')) & (models.Employee.name.isnot(None)) & (models.Employee.name != '')
     
-    results = db.query(
+    emp_filled = dict(db.query(
         models.Employee.post_name,
-        func.count(models.Employee.id).label('total'),
-        func.count(case((models.Employee.post_status == 'Filled', 1))).label('filled'),
-        func.count(case((models.Employee.post_status == 'Vacant', 1))).label('vacant')
-    ).filter(is_not_hr_pool).group_by(models.Employee.post_name).order_by(text('total DESC')).all()
+        func.count(models.Employee.id)
+    ).filter(is_not_hr_pool & is_filled).group_by(models.Employee.post_name).all())
+
+    # 3. Merge and format results
+    final_stats = []
+    # Get all unique designations from both sets
+    all_designations = set(rat_totals.keys()).union(set(emp_filled.keys()))
     
-    return [
-        {
-            "designation": r[0] or "Unknown",
-            "total": r[1],
-            "filled": r[2],
-            "vacant": r[3]
-        } for r in results if r[0]
-    ]
+    for post in all_designations:
+        if not post:
+            continue
+        total = rat_totals.get(post) or 0
+        filled = emp_filled.get(post) or 0
+        vacant = total - filled
+        # Just in case there are more filled than total due to legacy data
+        if vacant < 0: 
+            vacant = 0
+            
+        final_stats.append({
+            "designation": post,
+            "total": total,
+            "filled": filled,
+            "vacant": vacant
+        })
+    
+    # Sort by total descending
+    final_stats.sort(key=lambda x: x['total'], reverse=True)
+    return final_stats
 
 from datetime import datetime
 

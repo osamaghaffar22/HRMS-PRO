@@ -27,6 +27,7 @@ export default function ExtraPage() {
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
   const [separationType, setSeparationType] = useState<string>('');
   const [separationDate, setSeparationDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [page, setPage] = useState(1);
 
   // Search active employees
   const { data: searchResults, isLoading: isSearching } = useQuery({
@@ -41,13 +42,20 @@ export default function ExtraPage() {
   });
 
   // Fetch extra/separated employees
-  const { data: extraEmployees, isLoading: isLoadingExtra } = useQuery({
-    queryKey: ['extra-employees'],
+  const { data: extraData, isLoading: isLoadingExtra, refetch: refetchExtra } = useQuery({
+    queryKey: ['extra-employees', page],
     queryFn: async () => {
-      const res = await api.get(`/api/employees/extra/all`);
-      return res.data;
+      const res = await api.get(`/api/extra?skip=${(page - 1) * 100}&limit=100`);
+      return {
+        data: res.data,
+        totalCount: parseInt(res.headers['x-total-count'] || '0')
+      };
     }
   });
+
+  const extraEmployees = extraData?.data || [];
+  const totalCount = extraData?.totalCount || 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / 100));
 
   const separateMutation = useMutation({
     mutationFn: async () => {
@@ -60,14 +68,22 @@ export default function ExtraPage() {
     },
     onSuccess: () => {
       alert("Employee successfully separated and moved to Extra");
+      refetchExtra();
       setSelectedEmployee(null);
       setSearchTerm('');
-      setSeparationType('');
-      queryClient.invalidateQueries({ queryKey: ['extra-employees'] });
-      queryClient.invalidateQueries({ queryKey: ['employees'] }); // invalidate main employees list
+      setSeparationType("");
+      setSeparationDate("");
+    }
+  });
+
+  const revertMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await api.post(`/api/extra/${id}/revert`);
+      return res.data;
     },
-    onError: (error: any) => {
-      alert(error?.response?.data?.detail || "Failed to process separation");
+    onSuccess: () => {
+      alert("Employee successfully reverted to active seat");
+      refetchExtra();
     }
   });
 
@@ -251,18 +267,18 @@ export default function ExtraPage() {
                     </TableCell>
                     
                     <TableCell className="p-3 text-center">
-                      <span className="text-[11px] font-bold text-slate-700">{e.separation_date || 'N/A'}</span>
+                      <span className="text-[11px] font-bold text-slate-700">{e.date_of_action || 'N/A'}</span>
                     </TableCell>
 
                     <TableCell className="p-3 text-center">
                       <Badge variant="destructive" className="bg-rose-500 hover:bg-rose-600 text-[10px] uppercase tracking-wider font-black px-2 py-1">
-                        {e.employment_status}
+                        {e.reason || 'N/A'}
                       </Badge>
                     </TableCell>
 
                     <TableCell className="p-3 text-center">
-                      <Button variant="ghost" size="icon" onClick={() => window.open(`/employees?editId=${e.id}`, '_self')} className="h-8 w-8 hover:bg-slate-200">
-                        <Edit2 className="h-4 w-4 text-slate-500" />
+                      <Button variant="outline" size="sm" onClick={() => { if(window.confirm('Are you sure you want to revert this employee?')) revertMutation.mutate(e.id); }} className="h-8 hover:bg-emerald-50 text-emerald-600 border-emerald-200">
+                        Revert
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -270,6 +286,18 @@ export default function ExtraPage() {
               )}
             </TableBody>
           </Table>
+          {totalCount > 100 && (
+            <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-slate-100 rounded-b-3xl">
+              <div className="text-xs font-bold text-slate-500">
+                Showing {(page - 1) * 100 + 1} to {Math.min(page * 100, totalCount)} of {totalCount} records
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500 mr-2">Page {page} of {totalPages}</span>
+                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Previous</Button>
+                <Button variant="outline" size="sm" onClick={() => setPage(p => p + 1)} disabled={page >= totalPages}>Next</Button>
+              </div>
+            </div>
+          )}
         </Card>
       </div>
     </div>

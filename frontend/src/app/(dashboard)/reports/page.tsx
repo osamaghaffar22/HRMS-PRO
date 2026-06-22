@@ -116,6 +116,8 @@ export default function ReportsPage() {
   const [selectedCols, setSelectedCols] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<string>('personal');
   const [filters, setFilters] = useState<Record<string, string[]>>({});
+  const [categoryFilter, setCategoryFilter] = useState<string>('All');
+  const [locationFilter, setLocationFilter] = useState<string>('All');
   
   const { data: reportData, isLoading } = useQuery({
     queryKey: ['report-data'],
@@ -143,6 +145,8 @@ export default function ReportsPage() {
 
   const resetFilters = () => {
     setFilters({});
+    setCategoryFilter('All');
+    setLocationFilter('All');
   };
 
   const getUniqueOptions = (colId: string): string[] => {
@@ -154,6 +158,16 @@ export default function ReportsPage() {
   const filteredData = useMemo(() => {
     if (!reportData) return [];
     return reportData.filter((emp: any) => {
+      const bsInt = parseInt(emp.bs, 10) || 0;
+      const desig = (emp.post_name || '').toLowerCase();
+      let empCategory = 'Official';
+      if (bsInt >= 17 || (bsInt === 16 && (desig.includes('senior personal assistant') || desig.includes('spa') || desig.includes('deputy assistant director (accounts)') || desig.includes('dada')))) {
+         empCategory = 'Officer';
+      }
+
+      if (categoryFilter !== 'All' && empCategory !== categoryFilter) return false;
+      if (locationFilter !== 'All' && emp.hq_field !== locationFilter) return false;
+
       return selectedCols.every(colId => {
         const activeFilters = filters[colId] || [];
         if (activeFilters.length === 0) return true;
@@ -161,7 +175,7 @@ export default function ReportsPage() {
         return activeFilters.includes(empValue);
       });
     });
-  }, [reportData, selectedCols, filters]);
+  }, [reportData, selectedCols, filters, categoryFilter, locationFilter]);
 
   const handlePrint = () => window.print();
 
@@ -223,6 +237,34 @@ export default function ReportsPage() {
           <Button variant="outline" className="font-black text-[10px] uppercase shadow-sm border-rose-100 text-rose-600 hover:bg-rose-50" onClick={() => handleExport('pdf')}>
             <FileText className="h-3 w-3 mr-2" /> PDF Export
           </Button>
+        </div>
+      </div>
+
+      {/* Global Default Filters */}
+      <div className="flex gap-4 print:hidden">
+        <div className="flex flex-col gap-1.5 w-64">
+          <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Classification</Label>
+          <select 
+            value={categoryFilter} 
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="flex h-10 w-full rounded-md border-none bg-white px-3 py-2 text-xs font-bold uppercase shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-primary/20 text-slate-700"
+          >
+            <option value="All">ALL CLASSIFICATIONS</option>
+            <option value="Officer">OFFICERS ONLY</option>
+            <option value="Official">OFFICIALS ONLY</option>
+          </select>
+        </div>
+        <div className="flex flex-col gap-1.5 w-64">
+          <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Location</Label>
+          <select 
+            value={locationFilter} 
+            onChange={(e) => setLocationFilter(e.target.value)}
+            className="flex h-10 w-full rounded-md border-none bg-white px-3 py-2 text-xs font-bold uppercase shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-primary/20 text-slate-700"
+          >
+            <option value="All">ALL LOCATIONS</option>
+            <option value="HQ">HEADQUARTERS ONLY</option>
+            <option value="Field">FIELD ONLY</option>
+          </select>
         </div>
       </div>
 

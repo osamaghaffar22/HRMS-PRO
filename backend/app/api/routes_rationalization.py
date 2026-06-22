@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 from sqlalchemy import func, cast, Integer
-from typing import List
+from typing import List, Optional
 from app import models, schemas
 from app.db.database import get_db
 from app.core.auth_utils import PermissionChecker
@@ -9,16 +9,72 @@ from app.core.auth_utils import PermissionChecker
 router = APIRouter(prefix="/api/rationalization", tags=["rationalization"], dependencies=[Depends(PermissionChecker(["rationalization"]))])
 
 @router.get("/", response_model=List[schemas.Rationalization])
-def get_rationalizations(db: Session = Depends(get_db)):
-    return db.query(models.Rationalization).order_by(cast(models.Rationalization.s_no, Integer).asc(), cast(models.Rationalization.bs, Integer).desc(), models.Rationalization.id.asc()).all()
+def get_rationalizations(
+    skip: int = 0,
+    limit: Optional[int] = 100,
+    response: Response = None,
+    db: Session = Depends(get_db)
+):
+    query = db.query(models.Rationalization).order_by(cast(models.Rationalization.s_no, Integer).asc(), cast(models.Rationalization.bs, Integer).desc(), models.Rationalization.id.asc())
+    
+    total_count = query.count()
+    if response:
+        response.headers["X-Total-Count"] = str(total_count)
+        
+    if skip and skip > 0:
+        query = query.offset(skip)
+    if limit and limit > 0:
+        query = query.limit(limit)
+        
+    return query.all()
+
+@router.get("/summary")
+def get_rationalization_summary(db: Session = Depends(get_db)):
+    # Calculate Total Sanctioned Seats
+    total_sanctioned = db.query(func.sum(models.Rationalization.allocated_posts)).scalar() or 0
+    
+    # Calculate Total Filled Seats from active employees in the valid HR pool logic
+    is_not_hr_pool = ~(
+        (models.Employee.branch_office.ilike('%HR POOL%')) | 
+        (models.Employee.hq_field.ilike('%HR POOL%'))
+    )
+    is_active = (models.Employee.employment_status == 'Active') | (models.Employee.employment_status == None)
+    
+    total_filled = db.query(func.count(models.Employee.id)).filter(
+        models.Employee.post_status != 'Vacant',
+        is_not_hr_pool,
+        is_active
+    ).scalar() or 0
+    
+    return {
+        "totalSeats": total_sanctioned,
+        "totalFilled": total_filled,
+        "totalVacant": total_sanctioned - total_filled
+    }
 
 @router.get("/status")
-def get_rationalization_status(db: Session = Depends(get_db)):
+def get_rationalization_status(
+    skip: int = 0,
+    limit: Optional[int] = 100,
+    response: Response = None,
+    db: Session = Depends(get_db)
+):
     """
     Returns the list of rationalizations along with the current count of active employees
     in those branches/posts to display in the UI.
     """
-    rationalizations = db.query(models.Rationalization).order_by(cast(models.Rationalization.s_no, Integer).asc(), cast(models.Rationalization.bs, Integer).desc(), models.Rationalization.id.asc()).all()
+    query = db.query(models.Rationalization).order_by(cast(models.Rationalization.s_no, Integer).asc(), cast(models.Rationalization.bs, Integer).desc(), models.Rationalization.id.asc())
+    
+    total_count = query.count()
+    if response:
+        response.headers["X-Total-Count"] = str(total_count)
+        
+    if skip and skip > 0:
+        query = query.offset(skip)
+    if limit and limit > 0:
+        query = query.limit(limit)
+        
+    rationalizations = query.all()
     
     # We need to count active employees per branch_office and post_name
     # Assuming 'Active' implies they are not retired/resigned, but in our system 
@@ -30,11 +86,13 @@ def get_rationalization_status(db: Session = Depends(get_db)):
         (models.Employee.hq_field.ilike('%HR POOL%'))
     )
     
+    is_active = (models.Employee.employment_status == 'Active') | (models.Employee.employment_status == None)
+    
     emp_counts = db.query(
         models.Employee.branch_office,
         models.Employee.post_name,
         func.count(models.Employee.id).label("current_count")
-    ).filter(models.Employee.post_status != 'Vacant', is_not_hr_pool).group_by(models.Employee.branch_office, models.Employee.post_name).all()
+    ).filter(models.Employee.post_status != 'Vacant', is_not_hr_pool, is_active).group_by(models.Employee.branch_office, models.Employee.post_name).all()
     
     # Create a dictionary for quick lookup
     count_map = {}

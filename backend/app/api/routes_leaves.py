@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
-from typing import List
+from typing import List, Optional
 from app import models, schemas
 from app.db import database
 from app.db.database import get_db
@@ -58,6 +58,11 @@ def get_leaves(
     status: str = None, 
     employee_id: int = None, 
     search: str = None,
+    officer_official: str = None,
+    active_only: bool = False,
+    skip: int = 0,
+    limit: Optional[int] = 100,
+    response: Response = None,
     db: Session = Depends(get_db)
 ):
     query = db.query(
@@ -74,15 +79,41 @@ def get_leaves(
         models.LeaveRecord.created_at
     ).outerjoin(models.Employee, models.LeaveRecord.employee_id == models.Employee.id)
     
+    query = query.filter(or_(models.Employee.employment_status == 'Active', models.Employee.employment_status == None))
+    
+    if active_only:
+        from datetime import date
+        today_str = date.today().isoformat()
+        query = query.filter(or_(models.LeaveRecord.to_date >= today_str, models.LeaveRecord.status != 'Approved'))
+        
     if status and status != 'all':
         query = query.filter(models.LeaveRecord.status == status)
     if employee_id:
         query = query.filter(models.LeaveRecord.employee_id == employee_id)
+        
+    if officer_official and officer_official != 'all':
+        from sqlalchemy import cast, Integer
+        if officer_official == 'Officer':
+            query = query.filter(cast(models.Employee.bs, Integer) >= 16)
+        elif officer_official == 'Official':
+            query = query.filter(cast(models.Employee.bs, Integer) < 16)
+            
     if search:
         f = f"%{search}%"
         query = query.filter(or_(models.Employee.name.ilike(f), models.Employee.code.ilike(f)))
     
-    return query.order_by(models.LeaveRecord.created_at.desc()).all()
+    query = query.order_by(models.LeaveRecord.created_at.desc())
+    
+    total_count = query.count()
+    if response:
+        response.headers["X-Total-Count"] = str(total_count)
+        
+    if skip and skip > 0:
+        query = query.offset(skip)
+    if limit and limit > 0:
+        query = query.limit(limit)
+        
+    return query.all()
 
 @router.put("/{leave_id}", response_model=schemas.LeaveRecord)
 def update_leave(leave_id: int, leave_update: schemas.LeaveRecordCreate, db: Session = Depends(get_db), current_user=Depends(get_current_user)):

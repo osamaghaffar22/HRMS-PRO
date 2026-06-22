@@ -114,6 +114,7 @@ export default function ACRPage() {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('Form');
   const [activeTab, setActiveTab] = useState('Form');
+  const [page, setPage] = useState(1);
   const [tabYearsFilter, setTabYearsFilter] = useState<string[]>([]);
   
   const { data: availableYears = ['2023', '2024', '2025', '2026'] } = useQuery({
@@ -126,8 +127,9 @@ export default function ACRPage() {
 
   useEffect(() => {
     if (availableYears.length > 0 && tabYearsFilter.length === 0) {
-      const lastYear = availableYears[availableYears.length - 1];
-      setTabYearsFilter([lastYear]);
+      const prevYear = (new Date().getFullYear() - 1).toString();
+      const defaultYear = availableYears.includes(prevYear) ? prevYear : availableYears[availableYears.length - 1];
+      setTabYearsFilter([defaultYear]);
     }
   }, [availableYears]);
 
@@ -245,24 +247,38 @@ export default function ACRPage() {
     resetFilters();
   };
 
+  useEffect(() => {
+    setPage(1);
+  }, [deferredSearch, category]);
+
   const resetFilters = () => {
-    setDesignationFilter([]);
+    const prevYear = (new Date().getFullYear() - 1).toString();
+    setTabYearsFilter([prevYear]);
     setStatusFilter([]);
     setGaFilter([]);
     setRemarksFilter([]);
     setFitnessFilter([]);
     setPromotionFilter([]);
+    setDesignationFilter([]);
     setCompletionFilter([]);
     setSearch('');
   };
 
-  const { data: employees, isLoading } = useQuery({
-    queryKey: ['acr-employees', deferredSearch, category === 'Form' ? 'Officer' : category],
+  const { data: employeesData, isLoading: isLoadingEmployees, refetch: refetchEmployees } = useQuery({
+    queryKey: ['acr-employees', deferredSearch, category === 'Form' ? 'Officer' : (category === 'History' ? 'Official' : category), page],
     queryFn: async () => {
-      const res = await api.get(`/api/acr?search=${deferredSearch}&category=${category === 'Form' ? 'Officer' : category}`);
-      return res.data;
-    }
+      const apiCategory = category === 'Form' ? 'Officer' : (category === 'History' ? 'Official' : category);
+      const res = await api.get(`/api/acr?search=${deferredSearch}&category=${apiCategory}&skip=${(page - 1) * 100}&limit=100`);
+      return {
+        data: res.data,
+        totalCount: parseInt(res.headers['x-total-count'] || '0')
+      };
+    },
   });
+
+  const employees = employeesData?.data || [];
+  const totalCount = employeesData?.totalCount || 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / 100));
 
   const { data: formSearchEmployees } = useQuery({
       queryKey: ['acr-form-search', deferredFormEmpSearch],
@@ -298,7 +314,7 @@ export default function ACRPage() {
   const { data: allHistoryData, isLoading: isLoadingAllHistory, refetch: refetchAllHistory } = useQuery({
       queryKey: ['acr-all-history'],
       queryFn: async () => {
-          const res = await api.get(`/api/acr?category=All`);
+          const res = await api.get(`/api/acr?category=All&limit=10000`);
           return res.data;
       },
       enabled: category === 'History'
@@ -704,80 +720,83 @@ export default function ACRPage() {
   };
 
   
-const handleExportExcel = () => {
-    if (!filteredEmployees || filteredEmployees.length === 0) return;
-    const rows: any[] = [];
-    filteredEmployees.forEach((emp: any, i: number) => {
-      const submitted = emp.reports?.flatMap((r: any) => r.periods.map((p: any) => ({...p}))) || [];
-      const showSubmitted = completionFilter.length === 0 || completionFilter.includes('Completed');
-      const showRemaining = completionFilter.length === 0 || completionFilter.includes('Incomplete');
-
-      if (showSubmitted) {
-          submitted.forEach((p: any) => {
-              if (tabYearsFilter.length > 0 && !tabYearsFilter.includes(p.year?.toString())) return;
-              rows.push({
-                  'S.No': i + 1, 'Name': emp.name, 'Designation': emp.post_name, 'BPS': emp.bs, 'Office': emp.branch_office,
-                  'From Date': formatDisplayDate(p.from), 'To Date': formatDisplayDate(p.to), 'Duration': formatTenure(p.from, p.to), 'Status': 'Submitted'
-              });
-          });
-      }
-      if (showRemaining) {
-          const yearsToCheck = tabYearsFilter.length > 0 ? tabYearsFilter : [(new Date().getFullYear() - 1).toString()];
-          yearsToCheck.forEach(y => {
-              const gaps = calculateGaps(y, submitted.filter((p: any) => p.year?.toString() === y), emp.joining_date);
-              gaps.forEach((g: any) => {
-                  const fromStr = g.start.toISOString().split('T')[0];
-                  const toStr = g.end.toISOString().split('T')[0];
-                  rows.push({
-                      'S.No': i + 1, 'Name': emp.name, 'Designation': emp.post_name, 'BPS': emp.bs, 'Office': emp.branch_office,
-                      'From Date': formatDisplayDate(fromStr), 'To Date': formatDisplayDate(toStr), 'Duration': formatTenure(fromStr, toStr), 'Status': 'Remaining'
-                  });
-              });
-          });
-      }
-    });
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "ACR_Report");
-    XLSX.writeFile(wb, `ACR_Report_${tabYearsFilter[0] || 'All'}_${new Date().getTime()}.xlsx`);
+  const [isExporting, setIsExporting] = useState(false);
+  const handleExportExcel = async () => {
+    try {
+      setIsExporting(true);
+      const params = new URLSearchParams();
+      if (deferredSearch) params.append('search', deferredSearch);
+      const apiCategory = category === 'Form' ? 'Officer' : (category === 'History' ? 'Official' : category);
+      if (category) params.append('category', apiCategory);
+      if (tabYearsFilter.length > 0) params.append('year', tabYearsFilter[0]);
+      const url = `${api.defaults.baseURL}/api/acr/export/excel?${params.toString()}`;
+      window.open(url, '_blank');
+    } catch (error) {
+      console.error("Export failed:", error);
+      alert("Export failed. Please try again.");
+    } finally {
+      setIsExporting(false);
+    }
   };
 
-  const handleExportPDF = () => {
-    if (!filteredEmployees || filteredEmployees.length === 0) return;
-    const doc = new jsPDF('landscape', 'pt', 'a4');
-    doc.text(`ACR Management Report - ${tabYearsFilter[0] || 'All'} (${category})`, 40, 40);
-    const tableData: any[] = [];
-    filteredEmployees.forEach((emp: any, i: number) => {
-        const submitted = emp.reports?.flatMap((r: any) => r.periods.map((p: any) => ({...p}))) || [];
-        const showSubmitted = completionFilter.length === 0 || completionFilter.includes('Completed');
-        const showRemaining = completionFilter.length === 0 || completionFilter.includes('Incomplete');
-        if (showSubmitted) {
-            submitted.forEach((p: any) => {
-                if (tabYearsFilter.length > 0 && !tabYearsFilter.includes(p.year?.toString())) return;
-                tableData.push([i + 1, emp.name, emp.post_name, emp.bs, emp.branch_office, formatDisplayDate(p.from), formatDisplayDate(p.to), formatTenure(p.from, p.to), 'Submitted']);
-            });
-        }
-        if (showRemaining) {
-            const yearsToCheck = tabYearsFilter.length > 0 ? tabYearsFilter : [(new Date().getFullYear() - 1).toString()];
-            yearsToCheck.forEach(y => {
-                const gaps = calculateGaps(y, submitted.filter((p: any) => p.year?.toString() === y), emp.joining_date);
-                gaps.forEach((g: any) => {
-                    const fromStr = g.start.toISOString().split('T')[0];
-                    const toStr = g.end.toISOString().split('T')[0];
-                    tableData.push([i + 1, emp.name, emp.post_name, emp.bs, emp.branch_office, formatDisplayDate(fromStr), formatDisplayDate(toStr), formatTenure(fromStr, toStr), 'Remaining']);
-                });
-            });
-        }
-    });
-    autoTable(doc, {
-      startY: 60,
-      head: [['#', 'Name', 'Designation', 'BPS', 'Office', 'From', 'To', 'Duration', 'Remarks']],
-      body: tableData,
-      theme: 'grid',
-      headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42] },
-      styles: { fontSize: 8 }
-    });
-    doc.save(`ACR_Report_${tabYearsFilter[0] || 'All'}_${new Date().getTime()}.pdf`);
+  const handleExportPDF = async () => {
+    try {
+      setIsExporting(true);
+      const params = new URLSearchParams();
+      if (deferredSearch) params.append('search', deferredSearch);
+      const apiCategory = category === 'Form' ? 'Officer' : (category === 'History' ? 'Official' : category);
+      if (category) params.append('category', apiCategory);
+      if (tabYearsFilter.length > 0) params.append('year', tabYearsFilter[0]);
+      params.append('limit', '10000');
+      
+      const res = await api.get(`/api/acr?${params.toString()}`);
+      const exportEmployees = res.data;
+
+      if (!exportEmployees || exportEmployees.length === 0) {
+        alert("No records found for export.");
+        return;
+      }
+
+      const doc = new jsPDF('landscape', 'pt', 'a4');
+      doc.text(`ACR Management Report - ${tabYearsFilter[0] || 'All'} (${category})`, 40, 40);
+      const tableData: any[] = [];
+      exportEmployees.forEach((emp: any, i: number) => {
+          const submitted = emp.reports?.flatMap((r: any) => r.periods.map((p: any) => ({...p}))) || [];
+          const showSubmitted = completionFilter.length === 0 || completionFilter.includes('Completed');
+          const showRemaining = completionFilter.length === 0 || completionFilter.includes('Incomplete');
+          if (showSubmitted) {
+              submitted.forEach((p: any) => {
+                  if (tabYearsFilter.length > 0 && !tabYearsFilter.includes(p.year?.toString())) return;
+                  tableData.push([i + 1, emp.name, emp.post_name, emp.bs, emp.branch_office, formatDisplayDate(p.from), formatDisplayDate(p.to), formatTenure(p.from, p.to), 'Submitted']);
+              });
+          }
+          if (showRemaining) {
+              const yearsToCheck = tabYearsFilter.length > 0 ? tabYearsFilter : [(new Date().getFullYear() - 1).toString()];
+              yearsToCheck.forEach(y => {
+                  const gaps = calculateGaps(y, submitted.filter((p: any) => p.year?.toString() === y), emp.joining_date);
+                  gaps.forEach((g: any) => {
+                      const fromStr = g.start.toISOString().split('T')[0];
+                      const toStr = g.end.toISOString().split('T')[0];
+                      tableData.push([i + 1, emp.name, emp.post_name, emp.bs, emp.branch_office, formatDisplayDate(fromStr), formatDisplayDate(toStr), formatTenure(fromStr, toStr), 'Remaining']);
+                  });
+              });
+          }
+      });
+      autoTable(doc, {
+        startY: 60,
+        head: [['#', 'Name', 'Designation', 'BPS', 'Office', 'From', 'To', 'Duration', 'Remarks']],
+        body: tableData,
+        theme: 'grid',
+        headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42] },
+        styles: { fontSize: 8 }
+      });
+      doc.save(`ACR_Report_${tabYearsFilter[0] || 'All'}_${new Date().getTime()}.pdf`);
+    } catch (error) {
+      console.error("PDF Export failed:", error);
+      alert("PDF Export failed. Please try again.");
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const handleHistoryExportExcel = () => {
@@ -1182,6 +1201,18 @@ const handleExportExcel = () => {
                                 )}
                             </TableBody>
                         </Table>
+                        {totalCount > 100 && (
+                          <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-slate-100">
+                            <div className="text-xs font-bold text-slate-500">
+                              Showing {(page - 1) * 100 + 1} to {Math.min(page * 100, totalCount)} of {totalCount} records
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-slate-500 mr-2">Page {page} of {totalPages}</span>
+                              <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Previous</Button>
+                              <Button variant="outline" size="sm" onClick={() => setPage(p => p + 1)} disabled={page >= totalPages}>Next</Button>
+                            </div>
+                          </div>
+                        )}
                     </div>
                   </Card>
                </div>
@@ -1367,7 +1398,7 @@ const handleExportExcel = () => {
             </div>
             <div className="flex items-center gap-2 bg-white p-1 rounded-xl shadow-sm border border-slate-100 h-12 px-2">
                 <div className="flex flex-col items-center justify-center px-4 border-r border-slate-100 mr-2">
-                    <span className="text-lg font-black text-primary leading-none tabular-nums">{filteredEmployees?.length || 0}</span>
+                    <span className="text-lg font-black text-primary leading-none tabular-nums">{totalCount}</span>
                     <span className="text-[7px] font-black text-slate-400 uppercase tracking-[0.2em] mt-0.5">Records</span>
                 </div>
                 <Button variant="ghost" size="sm" className="h-9 px-4 text-[11px] font-black text-slate-600 uppercase rounded-lg flex items-center gap-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all" onClick={handleExportExcel}><FileDown className="h-4 w-4 text-emerald-600" /> Excel</Button>
@@ -1397,7 +1428,7 @@ const handleExportExcel = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {isLoading ? (
+                  {isLoadingEmployees ? (
                     <TableRow><TableCell colSpan={category === 'Officer' ? 9 : 12} className="py-10 text-center text-slate-500 font-semibold">Loading data...</TableCell></TableRow>
                   ) : (
                     filteredEmployees?.map((emp: any, i: number) => {
@@ -1430,7 +1461,7 @@ const handleExportExcel = () => {
                       <React.Fragment key={emp.id}>
                         {displayRows.length === 0 ? (
                           <TableRow className="border-b border-slate-100 hover:bg-slate-50">
-                            <TableCell className="text-[12px] font-black text-slate-300 text-center p-2">{i + 1}</TableCell>
+                            <TableCell className="text-[12px] font-black text-slate-300 text-center p-2">{(page - 1) * 100 + i + 1}</TableCell>
                             <TableCell className="p-2 text-[14px] font-bold text-slate-900 uppercase leading-tight whitespace-normal break-words">{emp.name}</TableCell>
                             <TableCell className="p-2 text-slate-600 text-[13px] uppercase whitespace-normal break-words">{emp.post_name}</TableCell>
                             <TableCell className="p-2 text-primary font-black text-[12px] uppercase">{emp.bs}</TableCell>
@@ -1444,7 +1475,7 @@ const handleExportExcel = () => {
                                 <TableRow key={p.id} className={cn("transition-colors border-b border-slate-100", p.type === 'Submitted' ? "bg-emerald-50/40 hover:bg-emerald-100/40" : "bg-rose-50/40 hover:bg-rose-100/40")}>
                                     {pIdx === 0 && (
                                         <>
-                                            <TableCell className="text-[12px] font-black text-slate-300 text-center p-2 align-middle" rowSpan={displayRows.length}>{i + 1}</TableCell>
+                                            <TableCell className="text-[12px] font-black text-slate-300 text-center p-2 align-middle" rowSpan={displayRows.length}>{(page - 1) * 100 + i + 1}</TableCell>
                                             <TableCell className="p-2 text-[14px] font-bold text-slate-900 uppercase leading-tight whitespace-normal break-words align-middle" rowSpan={displayRows.length}>{emp.name}</TableCell>
                                             <TableCell className="p-2 text-slate-600 text-[13px] uppercase whitespace-normal break-words align-middle" rowSpan={displayRows.length}>{emp.post_name}</TableCell>
                                             <TableCell className="p-2 text-primary font-black text-[12px] uppercase align-middle" rowSpan={displayRows.length}>{emp.bs}</TableCell>
@@ -1515,6 +1546,18 @@ const handleExportExcel = () => {
                 </TableBody>
               </Table>
             </div>
+            {totalCount > 100 && (
+              <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-slate-100">
+                <div className="text-xs font-bold text-slate-500">
+                  Showing {(page - 1) * 100 + 1} to {Math.min(page * 100, totalCount)} of {totalCount} records
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-500 mr-2">Page {page} of {totalPages}</span>
+                  <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Previous</Button>
+                  <Button variant="outline" size="sm" onClick={() => setPage(p => p + 1)} disabled={page >= totalPages}>Next</Button>
+                </div>
+              </div>
+            )}
             </Card>
             </div>
           )}
