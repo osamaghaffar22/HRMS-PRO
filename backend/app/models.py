@@ -1,19 +1,19 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON, Boolean, Text
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON, Boolean, Text, Index
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from datetime import datetime
 
 Base = declarative_base()
 
 class SystemConfig(Base):
     __tablename__ = "system_config"
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True)
     key = Column(String, unique=True, index=True)
     value = Column(JSON)
 
 class User(Base):
     __tablename__ = "users"
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True)
     username = Column(String, unique=True, index=True)
     hashed_password = Column(String)
     full_name = Column(String, index=True)
@@ -24,7 +24,7 @@ class User(Base):
 
 class Employee(Base):
     __tablename__ = "employees"
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True)
     personal_file_no = Column(String)
     code = Column(String, index=True)
     s_no = Column(String)
@@ -77,24 +77,29 @@ class Employee(Base):
     post_status = Column(String, index=True)
     employment_status = Column(String, default="Active", index=True)
     separation_date = Column(String, default=None)
-    reports = relationship("ACRReport", backref="employee")
+    reports = relationship("ACRReport", backref="employee", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index('idx_dashboard_stats', 'hq_field', 'officer_official', 'post_status', 'employment_status'),
+        Index('idx_hq_officer', 'hq_field', 'officer_official'),
+    )
 
 class CustomModule(Base):
     __tablename__ = "custom_modules"
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True)
     title = Column(String, unique=True, index=True)
     columns = Column(JSON) # ["Col1", "Col2"]
 
 class CustomModuleData(Base):
     __tablename__ = "custom_module_data"
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True)
     module_id = Column(Integer, ForeignKey("custom_modules.id"), index=True)
     employee_id = Column(Integer, ForeignKey("employees.id"), index=True)
     data = Column(JSON) # {"Col1": "Val1", "Col2": "Val2"}
 
 class TransferHistory(Base):
     __tablename__ = "transfer_history"
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True)
     employee_id = Column(Integer, ForeignKey("employees.id"), index=True)
     order_number = Column(String)
     order_date = Column(String)
@@ -107,11 +112,11 @@ class TransferHistory(Base):
     duration_spent = Column(String)
     remarks = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
-    employee = relationship("Employee", backref="transfers")
+    employee = relationship("Employee", backref=backref("transfers", cascade="all, delete-orphan"))
 
 class LeaveRecord(Base):
     __tablename__ = "leave_records"
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True)
     employee_id = Column(Integer, ForeignKey("employees.id"), index=True)
     from_date = Column(String)
     to_date = Column(String)
@@ -119,11 +124,11 @@ class LeaveRecord(Base):
     status = Column(String, index=True)
     remarks = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
-    employee = relationship("Employee", backref="leaves")
+    employee = relationship("Employee", backref=backref("leaves", cascade="all, delete-orphan"))
 
 class ACRData(Base):
     __tablename__ = "acr_data"
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True)
     employee_id = Column(Integer, ForeignKey("employees.id"), index=True)
     year = Column(String, index=True)
     assessment = Column(String)
@@ -131,16 +136,16 @@ class ACRData(Base):
 
 class ACRReport(Base):
     __tablename__ = "acr_reports"
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True)
     employee_id = Column(Integer, ForeignKey("employees.id"), index=True)
     year = Column(String, index=True)
     status = Column(String)  # Pending, Sent to Islamabad
     is_manually_completed = Column(Boolean, default=False)
-    periods = relationship("ACRReportPeriod", backref="acr_report")
+    periods = relationship("ACRReportPeriod", backref=backref("acr_report", cascade="all, delete-orphan"))
 
 class ACRReportPeriod(Base):
     __tablename__ = "acr_report_periods"
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True)
     acr_report_id = Column(Integer, ForeignKey("acr_reports.id"), index=True)
     from_date = Column(String)
     to_date = Column(String)
@@ -154,7 +159,7 @@ class ACRReportPeriod(Base):
     co_name = Column(String, default="")
 class FileTracking(Base):
     __tablename__ = "file_tracking"
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True)
     file_name = Column(String, index=True)
     case_subject = Column(String)
     reason = Column(String)
@@ -169,7 +174,7 @@ class FileTracking(Base):
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True)
     action = Column(String)
     table_name = Column(String, index=True)
@@ -180,7 +185,7 @@ class AuditLog(Base):
 
 class Rationalization(Base):
     __tablename__ = "rationalization"
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True)
     wing_division = Column(String, index=True, nullable=True)
     region = Column(String, index=True, nullable=True)
     branch_office = Column(String, index=True)
@@ -192,7 +197,7 @@ class Rationalization(Base):
 
 class HRPool(Base):
     __tablename__ = "hr_pool"
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True)
     s_no = Column(String)
     name = Column(String, index=True)
     post_name = Column(String, index=True)
@@ -211,7 +216,7 @@ class HRPool(Base):
 
 class Extra(Base):
     __tablename__ = "extra_pool"
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True)
     s_no = Column(String)
     name = Column(String, index=True)
     post_name = Column(String, index=True)

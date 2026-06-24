@@ -21,7 +21,13 @@ if DATABASE_URL.startswith("sqlite:///"):
 if DATABASE_URL.startswith("sqlite"):
     engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False, "timeout": 15})
 else:
-    engine = create_engine(DATABASE_URL)
+    engine = create_engine(
+        DATABASE_URL,
+        pool_size=20,
+        max_overflow=30,
+        pool_timeout=30,
+        pool_recycle=1800
+    )
 
 @event.listens_for(Engine, "connect")
 def set_sqlite_pragma(dbapi_connection, connection_record):
