@@ -141,7 +141,7 @@ class ACRReport(Base):
     year = Column(String, index=True)
     status = Column(String)  # Pending, Sent to Islamabad
     is_manually_completed = Column(Boolean, default=False)
-    periods = relationship("ACRReportPeriod", backref=backref("acr_report", cascade="all, delete-orphan"))
+    periods = relationship("ACRReportPeriod", backref="acr_report", cascade="all, delete-orphan")
 
 class ACRReportPeriod(Base):
     __tablename__ = "acr_report_periods"
