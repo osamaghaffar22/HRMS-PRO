@@ -85,7 +85,7 @@ export default function DashboardPage() {
           <div className="grid grid-cols-3 gap-2 relative z-10">
             <div className="flex flex-col items-center justify-center p-2 rounded-lg bg-slate-50 border border-slate-100 hover:bg-slate-100 hover:shadow-sm transition-all cursor-pointer" onClick={() => router.push(`${basePath}?${filters.total}`)}>
               <span className="text-[10px] font-bold text-blue-600 uppercase mb-0.5 text-center">Total</span>
-              {statsLoading ? <Skeleton className="h-4 w-6" /> : <span className="text-xl font-black text-slate-800 leading-none text-center">{data?.total || 0}</span>}
+              {statsLoading ? <Skeleton className="h-4 w-6" /> : <span className="text-xl font-black text-blue-600 leading-none text-center">{data?.total || 0}</span>}
             </div>
             <div className="flex flex-col items-center justify-center p-2 rounded-lg bg-emerald-50/50 border border-emerald-100/50 hover:bg-emerald-100 hover:shadow-sm transition-all cursor-pointer" onClick={() => router.push(`${basePath}?${filters.filled}`)}>
               <span className="text-[10px] font-bold text-emerald-600 uppercase mb-0.5 text-center">Filled</span>
@@ -153,7 +153,7 @@ export default function DashboardPage() {
               />
             </div>
           </CardHeader>
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-hidden [&>div]:h-full [&>div]:overflow-y-auto">
             <Table>
               <TableHeader className="bg-[#405189] sticky top-0 z-10">
                 <TableRow>
@@ -200,7 +200,7 @@ export default function DashboardPage() {
              </div>
           </CardHeader>
           
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-hidden [&>div]:h-full [&>div]:overflow-y-auto">
              <Table>
                 <TableHeader className="bg-[#405189] sticky top-0 z-10">
                    <TableRow>
