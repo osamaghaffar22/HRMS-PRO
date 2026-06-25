@@ -68,61 +68,40 @@ export default function DashboardPage() {
     d.designation.toLowerCase().includes(desigSearch.toLowerCase())
   );
 
-  const StatCard = ({ title, data, filters, colorClass }: any) => {
+  const StatCard = ({ title, data, filters }: any) => {
     const basePath = filters.basePath || '/employees';
     const percentFilled = data?.total > 0 ? Math.round((data.filled / data.total) * 100) : 0;
     
     return (
     <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } } }}>
-      <Card className={cn(
-        "corporate-card border-none shadow-md hover:shadow-xl transition-all duration-500 group overflow-hidden bg-white relative h-full cursor-default",
-        "before:absolute before:top-0 before:left-0 before:w-full before:h-1",
-        colorClass === 'purple' ? "before:bg-purple-500" : 
-        colorClass === 'blue' ? "before:bg-blue-500" : 
-        colorClass === 'green' ? "before:bg-emerald-500" : 
-        colorClass === 'gray' ? "before:bg-slate-400" : "before:bg-rose-500"
-      )}>
-        <div className="p-4 relative overflow-hidden">
-          {/* Subtle Background Gradient */}
-          <div className={cn(
-            "absolute -right-10 -top-10 w-32 h-32 rounded-full opacity-10 blur-2xl group-hover:opacity-20 transition-opacity",
-            colorClass === 'purple' ? "bg-purple-500" : 
-            colorClass === 'blue' ? "bg-blue-500" : 
-            colorClass === 'green' ? "bg-emerald-500" : 
-            colorClass === 'gray' ? "bg-slate-500" : "bg-rose-500"
-          )} />
+      <Card className="corporate-card border border-slate-200 shadow-sm hover:shadow-md transition-all duration-300 group bg-white relative h-full cursor-default rounded-xl">
+        <div className="p-4">
           
-          <h3 className="font-bold text-slate-800 uppercase text-[12px] font-black tracking-widest mb-3 relative z-10">{title}</h3>
+          <h3 className="font-bold text-slate-700 uppercase text-[11px] font-black tracking-wider mb-3">{title}</h3>
 
-          <div className="grid grid-cols-3 gap-2 relative z-10">
-            <div className="flex flex-col p-2 rounded-lg bg-slate-50 border border-slate-100 hover:bg-slate-100 hover:shadow-sm transition-all cursor-pointer" onClick={() => router.push(`${basePath}?${filters.total}`)}>
-              <span className="text-[10px] font-bold text-blue-600 uppercase mb-0.5">Total</span>
-              {statsLoading ? <Skeleton className="h-4 w-6" /> : <span className="text-xl font-black text-slate-800 leading-none">{data?.total || 0}</span>}
+          <div className="grid grid-cols-3 gap-2">
+            <div className="flex flex-col p-2 rounded-md bg-slate-50/50 border border-slate-100 hover:bg-slate-50 hover:border-blue-100 transition-all cursor-pointer group/box" onClick={() => router.push(`${basePath}?${filters.total}`)}>
+              <span className="text-[9px] font-bold text-slate-400 uppercase mb-0.5 group-hover/box:text-blue-500 transition-colors">Total</span>
+              {statsLoading ? <Skeleton className="h-4 w-6" /> : <span className="text-lg font-black text-blue-600 leading-none">{data?.total || 0}</span>}
             </div>
-            <div className="flex flex-col p-2 rounded-lg bg-emerald-50/50 border border-emerald-100/50 hover:bg-emerald-100 hover:shadow-sm transition-all cursor-pointer" onClick={() => router.push(`${basePath}?${filters.filled}`)}>
-              <span className="text-[10px] font-bold text-emerald-600 uppercase mb-0.5">Filled</span>
-              {statsLoading ? <Skeleton className="h-4 w-6" /> : <span className="text-xl font-black text-emerald-700 leading-none">{data?.filled || 0}</span>}
+            <div className="flex flex-col p-2 rounded-md bg-slate-50/50 border border-slate-100 hover:bg-slate-50 hover:border-emerald-100 transition-all cursor-pointer group/box" onClick={() => router.push(`${basePath}?${filters.filled}`)}>
+              <span className="text-[9px] font-bold text-slate-400 uppercase mb-0.5 group-hover/box:text-emerald-500 transition-colors">Filled</span>
+              {statsLoading ? <Skeleton className="h-4 w-6" /> : <span className="text-lg font-black text-emerald-600 leading-none">{data?.filled || 0}</span>}
             </div>
-            <div className="flex flex-col p-2 rounded-lg bg-rose-50/50 border border-rose-100/50 hover:bg-rose-100 hover:shadow-sm transition-all cursor-pointer" onClick={() => router.push(`${basePath}?${filters.vacant}`)}>
-              <span className="text-[10px] font-bold text-rose-600 uppercase mb-0.5">Vacant</span>
-              {statsLoading ? <Skeleton className="h-4 w-6" /> : <span className="text-xl font-black text-rose-700 leading-none">{data?.vacant || 0}</span>}
+            <div className="flex flex-col p-2 rounded-md bg-slate-50/50 border border-slate-100 hover:bg-slate-50 hover:border-rose-100 transition-all cursor-pointer group/box" onClick={() => router.push(`${basePath}?${filters.vacant}`)}>
+              <span className="text-[9px] font-bold text-slate-400 uppercase mb-0.5 group-hover/box:text-rose-500 transition-colors">Vacant</span>
+              {statsLoading ? <Skeleton className="h-4 w-6" /> : <span className="text-lg font-black text-rose-600 leading-none">{data?.vacant || 0}</span>}
             </div>
           </div>
 
-          <div className="mt-4 relative z-10">
-            <div className="flex justify-between text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+          <div className="mt-4">
+            <div className="flex justify-between text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">
               <span>Occupancy</span>
               <span>{percentFilled}%</span>
             </div>
-            <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden flex">
+            <div className="w-full bg-slate-100 rounded-full h-[2px] overflow-hidden flex">
               <div 
-                className={cn(
-                  "h-full transition-all duration-1000 ease-out",
-                  colorClass === 'purple' ? "bg-purple-500" : 
-                  colorClass === 'blue' ? "bg-blue-500" : 
-                  colorClass === 'green' ? "bg-emerald-500" : 
-                  colorClass === 'gray' ? "bg-slate-500" : "bg-rose-500"
-                )} 
+                className="h-full transition-all duration-1000 ease-out bg-slate-400"
                 style={{ width: `${percentFilled}%` }}
               />
             </div>
@@ -142,15 +121,15 @@ export default function DashboardPage() {
         variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.1 } } }} 
         initial="hidden" animate="show" 
         className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 px-2">
-        <StatCard title="All Staff Registry" data={stats?.all_staff} filters={{ total: '', filled: 'post_status=Filled', vacant: 'post_status=Vacant' }} colorClass="purple" />
-        <StatCard title="Officers (BPS 17+)" data={stats?.officers} filters={{ total: 'officer_official=Officer', filled: 'officer_official=Officer&post_status=Filled', vacant: 'officer_official=Officer&post_status=Vacant' }} colorClass="blue" />
-        <StatCard title="Officials (BPS 1-16)" data={stats?.officials} filters={{ total: 'officer_official=Official', filled: 'officer_official=Official&post_status=Filled', vacant: 'officer_official=Official&post_status=Vacant' }} colorClass="green" />
-        <StatCard title="HQ Officers" data={stats?.hq_officers} filters={{ total: 'hq_field=HQ&officer_official=Officer', filled: 'hq_field=HQ&officer_official=Officer&post_status=Filled', vacant: 'hq_field=HQ&officer_official=Officer&post_status=Vacant' }} colorClass="red" />
+        <StatCard title="All Staff Registry" data={stats?.all_staff} filters={{ total: '', filled: 'post_status=Filled', vacant: 'post_status=Vacant' }} />
+        <StatCard title="Officers (BPS 17+)" data={stats?.officers} filters={{ total: 'officer_official=Officer', filled: 'officer_official=Officer&post_status=Filled', vacant: 'officer_official=Officer&post_status=Vacant' }} />
+        <StatCard title="Officials (BPS 1-16)" data={stats?.officials} filters={{ total: 'officer_official=Official', filled: 'officer_official=Official&post_status=Filled', vacant: 'officer_official=Official&post_status=Vacant' }} />
+        <StatCard title="HQ Officers" data={stats?.hq_officers} filters={{ total: 'hq_field=HQ&officer_official=Officer', filled: 'hq_field=HQ&officer_official=Officer&post_status=Filled', vacant: 'hq_field=HQ&officer_official=Officer&post_status=Vacant' }} />
         
-        <StatCard title="Field Officers" data={stats?.field_officers} filters={{ total: 'hq_field=Field&officer_official=Officer', filled: 'hq_field=Field&officer_official=Officer&post_status=Filled', vacant: 'hq_field=Field&officer_official=Officer&post_status=Vacant' }} colorClass="purple" />
-        <StatCard title="HQ Officials" data={stats?.hq_officials} filters={{ total: 'hq_field=HQ&officer_official=Official', filled: 'hq_field=HQ&officer_official=Official&post_status=Filled', vacant: 'hq_field=HQ&officer_official=Official&post_status=Vacant' }} colorClass="blue" />
-        <StatCard title="Field Officials" data={stats?.field_officials} filters={{ total: 'hq_field=Field&officer_official=Official', filled: 'hq_field=Field&officer_official=Official&post_status=Filled', vacant: 'hq_field=Field&officer_official=Official&post_status=Vacant' }} colorClass="green" />
-        <StatCard title="HR Strategic Pool" data={stats?.hr_pool} filters={{ basePath: '/hr-pool', total: '', filled: 'post_status=Filled', vacant: 'post_status=Vacant' }} colorClass="gray" />
+        <StatCard title="Field Officers" data={stats?.field_officers} filters={{ total: 'hq_field=Field&officer_official=Officer', filled: 'hq_field=Field&officer_official=Officer&post_status=Filled', vacant: 'hq_field=Field&officer_official=Officer&post_status=Vacant' }} />
+        <StatCard title="HQ Officials" data={stats?.hq_officials} filters={{ total: 'hq_field=HQ&officer_official=Official', filled: 'hq_field=HQ&officer_official=Official&post_status=Filled', vacant: 'hq_field=HQ&officer_official=Official&post_status=Vacant' }} />
+        <StatCard title="Field Officials" data={stats?.field_officials} filters={{ total: 'hq_field=Field&officer_official=Official', filled: 'hq_field=Field&officer_official=Official&post_status=Filled', vacant: 'hq_field=Field&officer_official=Official&post_status=Vacant' }} />
+        <StatCard title="HR Strategic Pool" data={stats?.hr_pool} filters={{ basePath: '/hr-pool', total: '', filled: 'post_status=Filled', vacant: 'post_status=Vacant' }} />
       </motion.div>
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 px-2 items-start mt-6">
