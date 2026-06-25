@@ -190,9 +190,9 @@ export default function DashboardPage() {
                   filteredDesignations?.map((row: any, i: number) => (
                     <TableRow key={i} className="hover:bg-slate-50 border-b border-slate-50 transition-colors">
                       <TableCell className="font-bold text-slate-700 uppercase text-[11px] p-2 pl-4 truncate max-w-[180px]" title={row.designation}>{row.designation}</TableCell>
-                      <TableCell className="text-center font-bold text-blue-800 p-2 text-[13px] cursor-pointer hover:text-blue-700" onClick={() => router.push(`/employees?search=${row.designation}`)}>{row.total}</TableCell>
-                      <TableCell className="text-center font-bold text-emerald-700 bg-emerald-50/50 p-2 text-[13px] cursor-pointer hover:bg-emerald-100" onClick={() => router.push(`/employees?search=${row.designation}&post_status=Filled`)}>{row.filled}</TableCell>
-                      <TableCell className="text-center font-bold text-red-700 bg-rose-50/50 p-2 text-[13px] cursor-pointer hover:bg-rose-100" onClick={() => router.push(`/employees?search=${row.designation}&post_status=Vacant`)}>{row.vacant}</TableCell>
+                      <TableCell className="text-center font-bold text-blue-800 p-2 text-[13px] cursor-pointer hover:text-blue-700" onClick={() => router.push(`/employees?search=${encodeURIComponent(row.designation)}`)}>{row.total}</TableCell>
+                      <TableCell className="text-center font-bold text-emerald-700 bg-emerald-50/50 p-2 text-[13px] cursor-pointer hover:bg-emerald-100" onClick={() => router.push(`/employees?search=${encodeURIComponent(row.designation)}&post_status=Filled`)}>{row.filled}</TableCell>
+                      <TableCell className="text-center font-bold text-red-700 bg-rose-50/50 p-2 text-[13px] cursor-pointer hover:bg-rose-100" onClick={() => router.push(`/employees?search=${encodeURIComponent(row.designation)}&post_status=Vacant`)}>{row.vacant}</TableCell>
                     </TableRow>
                   ))
                 )}

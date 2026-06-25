@@ -141,44 +141,29 @@ def get_overall_stats(db: Session = Depends(get_db), current_user: models.User =
 
 @app.get("/api/stats/designation")
 def get_designation_stats(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    # 1. Total allocated posts per designation from Rationalization
-    rat_totals = dict(db.query(
-        models.Rationalization.post_name,
-        func.sum(models.Rationalization.allocated_posts)
-    ).group_by(models.Rationalization.post_name).all())
+    # HR Pool Definition: If Branch/Office or HQ/Field is HR Pool
+    is_hr_pool = (models.Employee.branch_office.ilike('%HR POOL%')) | (models.Employee.hq_field.ilike('%HR POOL%'))
+    is_active = (models.Employee.employment_status == 'Active') | (models.Employee.employment_status == None)
+    is_not_hr_pool = (~is_hr_pool) & is_active
 
-    # 2. Filled posts per designation from active Employees
-    is_not_hr_pool = ~(
-        (models.Employee.branch_office.ilike('%HR POOL%')) | 
-        (models.Employee.hq_field.ilike('%HR POOL%'))
-    )
     is_filled = (~models.Employee.name.ilike('%Vacant%')) & (models.Employee.name.isnot(None)) & (models.Employee.name != '')
-    
-    emp_filled = dict(db.query(
-        models.Employee.post_name,
-        func.count(models.Employee.id)
-    ).filter(is_not_hr_pool & is_filled).group_by(models.Employee.post_name).all())
 
-    # 3. Merge and format results
+    # Query Employee table grouped by designation
+    stats_query = db.query(
+        models.Employee.post_name,
+        func.count(models.Employee.id).label('total'),
+        func.count(case((is_filled, 1))).label('filled')
+    ).filter(is_not_hr_pool).group_by(models.Employee.post_name).all()
+
     final_stats = []
-    # Get all unique designations from both sets
-    all_designations = set(rat_totals.keys()).union(set(emp_filled.keys()))
-    
-    for post in all_designations:
-        if not post:
+    for row in stats_query:
+        if not row.post_name:
             continue
-        total = rat_totals.get(post) or 0
-        filled = emp_filled.get(post) or 0
-        vacant = total - filled
-        # Just in case there are more filled than total due to legacy data
-        if vacant < 0: 
-            vacant = 0
-            
         final_stats.append({
-            "designation": post,
-            "total": total,
-            "filled": filled,
-            "vacant": vacant
+            "designation": row.post_name,
+            "total": row.total,
+            "filled": row.filled,
+            "vacant": row.total - row.filled
         })
     
     # Sort by total descending
