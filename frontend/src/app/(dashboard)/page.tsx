@@ -70,34 +70,67 @@ export default function DashboardPage() {
 
   const StatCard = ({ title, data, filters, colorClass }: any) => {
     const basePath = filters.basePath || '/employees';
+    const percentFilled = data?.total > 0 ? Math.round((data.filled / data.total) * 100) : 0;
+    
     return (
-    <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } } }}><Card className={cn(
-      "corporate-card border-none shadow-sm hover:shadow-2xl transition-all duration-500 group overflow-hidden bg-white relative h-full hover:-translate-y-1 hover:scale-[1.02] cursor-default",
-      "before:absolute before:top-0 before:left-0 before:w-1 before:h-full",
-      colorClass === 'purple' ? "before:bg-primary" : 
-      colorClass === 'blue' ? "before:bg-blue-500" : 
-      colorClass === 'green' ? "before:bg-emerald-500" : 
-      colorClass === 'gray' ? "before:bg-slate-400" : "before:bg-rose-500"
-    )}>
-      <div className="p-4">
-        <h3 className="font-bold text-[#405189] uppercase text-[13px] font-black tracking-widest mb-4 text-center">{title}</h3>
+    <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } } }}>
+      <Card className={cn(
+        "corporate-card border-none shadow-md hover:shadow-xl transition-all duration-500 group overflow-hidden bg-white relative h-full cursor-default",
+        "before:absolute before:top-0 before:left-0 before:w-full before:h-1",
+        colorClass === 'purple' ? "before:bg-purple-500" : 
+        colorClass === 'blue' ? "before:bg-blue-500" : 
+        colorClass === 'green' ? "before:bg-emerald-500" : 
+        colorClass === 'gray' ? "before:bg-slate-400" : "before:bg-rose-500"
+      )}>
+        <div className="p-4 relative overflow-hidden">
+          {/* Subtle Background Gradient */}
+          <div className={cn(
+            "absolute -right-10 -top-10 w-32 h-32 rounded-full opacity-10 blur-2xl group-hover:opacity-20 transition-opacity",
+            colorClass === 'purple' ? "bg-purple-500" : 
+            colorClass === 'blue' ? "bg-blue-500" : 
+            colorClass === 'green' ? "bg-emerald-500" : 
+            colorClass === 'gray' ? "bg-slate-500" : "bg-rose-500"
+          )} />
+          
+          <h3 className="font-bold text-slate-800 uppercase text-[12px] font-black tracking-widest mb-3 relative z-10">{title}</h3>
 
-        <div className="grid grid-cols-3 gap-2">
-          <div className="flex flex-col items-center p-2 rounded-xl bg-primary/5 border border-primary/10 hover:bg-primary/10 hover:shadow-md transition-all cursor-pointer" onClick={() => router.push(`${basePath}?${filters.total}`)}>
-            <span className="text-[9px] font-bold text-blue-500 uppercase mb-0.5">Total</span>
-            {statsLoading ? <Skeleton className="h-4 w-6" /> : <span className="text-base font-black text-blue-800 leading-none">{data?.total || 0}</span>}
+          <div className="grid grid-cols-3 gap-2 relative z-10">
+            <div className="flex flex-col p-2 rounded-lg bg-slate-50 border border-slate-100 hover:bg-slate-100 hover:shadow-sm transition-all cursor-pointer" onClick={() => router.push(`${basePath}?${filters.total}`)}>
+              <span className="text-[10px] font-bold text-blue-600 uppercase mb-0.5">Total</span>
+              {statsLoading ? <Skeleton className="h-4 w-6" /> : <span className="text-xl font-black text-slate-800 leading-none">{data?.total || 0}</span>}
+            </div>
+            <div className="flex flex-col p-2 rounded-lg bg-emerald-50/50 border border-emerald-100/50 hover:bg-emerald-100 hover:shadow-sm transition-all cursor-pointer" onClick={() => router.push(`${basePath}?${filters.filled}`)}>
+              <span className="text-[10px] font-bold text-emerald-600 uppercase mb-0.5">Filled</span>
+              {statsLoading ? <Skeleton className="h-4 w-6" /> : <span className="text-xl font-black text-emerald-700 leading-none">{data?.filled || 0}</span>}
+            </div>
+            <div className="flex flex-col p-2 rounded-lg bg-rose-50/50 border border-rose-100/50 hover:bg-rose-100 hover:shadow-sm transition-all cursor-pointer" onClick={() => router.push(`${basePath}?${filters.vacant}`)}>
+              <span className="text-[10px] font-bold text-rose-600 uppercase mb-0.5">Vacant</span>
+              {statsLoading ? <Skeleton className="h-4 w-6" /> : <span className="text-xl font-black text-rose-700 leading-none">{data?.vacant || 0}</span>}
+            </div>
           </div>
-          <div className="flex flex-col items-center p-2 rounded-xl bg-primary/5 border border-primary/10 hover:bg-primary/10 hover:shadow-md transition-all cursor-pointer" onClick={() => router.push(`${basePath}?${filters.filled}`)}>
-            <span className="text-[9px] font-bold text-emerald-500 uppercase mb-0.5">Filled</span>
-            {statsLoading ? <Skeleton className="h-4 w-6" /> : <span className="text-base font-black text-emerald-600 leading-none">{data?.filled || 0}</span>}
+
+          <div className="mt-4 relative z-10">
+            <div className="flex justify-between text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+              <span>Occupancy</span>
+              <span>{percentFilled}%</span>
+            </div>
+            <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden flex">
+              <div 
+                className={cn(
+                  "h-full transition-all duration-1000 ease-out",
+                  colorClass === 'purple' ? "bg-purple-500" : 
+                  colorClass === 'blue' ? "bg-blue-500" : 
+                  colorClass === 'green' ? "bg-emerald-500" : 
+                  colorClass === 'gray' ? "bg-slate-500" : "bg-rose-500"
+                )} 
+                style={{ width: `${percentFilled}%` }}
+              />
+            </div>
           </div>
-          <div className="flex flex-col items-center p-2 rounded-xl bg-primary/5 border border-primary/10 hover:bg-primary/10 hover:shadow-md transition-all cursor-pointer" onClick={() => router.push(`${basePath}?${filters.vacant}`)}>
-            <span className="text-[9px] font-black text-rose-500 uppercase mb-0.5">Vacant</span>
-            {statsLoading ? <Skeleton className="h-4 w-6" /> : <span className="text-base font-black text-rose-600 leading-none">{data?.vacant || 0}</span>}
-          </div>
+
         </div>
-      </div>
-    </Card></motion.div>
+      </Card>
+    </motion.div>
     );
   };
 
