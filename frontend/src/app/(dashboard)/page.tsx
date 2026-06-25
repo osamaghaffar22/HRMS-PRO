@@ -59,7 +59,7 @@ export default function DashboardPage() {
     queryFn: async () => {
       const params = new URLSearchParams();
       if (empSearch) params.append('search', empSearch);
-      const res = await api.get(`/api/employees?${params.toString()}&limit=25`);
+      const res = await api.get(`/api/employees?${params.toString()}&limit=50`);
       return res.data;
     }
   });
