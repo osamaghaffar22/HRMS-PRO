@@ -86,12 +86,9 @@ def get_overall_stats(db: Session = Depends(get_db), current_user: models.User =
         func.coalesce(models.Employee.post_name, '').ilike('%Deputy Assistant Director%')
     )
     is_official = ~is_officer
-    
     # HQ/Field Rules
-    # Headquarters: Office/Branch matches "PEC Sindh"
-    is_hq = models.Employee.branch_office.ilike('%PEC Sindh%')
-    # Field: All other Office/Branch values
-    is_field = ~is_hq
+    is_hq = models.Employee.hq_field.ilike('HQ')
+    is_field = models.Employee.hq_field.ilike('Field')
 
     # Single query to get all counts based on new strict logic
     res = db.query(
