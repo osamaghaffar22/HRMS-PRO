@@ -68,7 +68,7 @@ export default function DashboardPage() {
     d.designation.toLowerCase().includes(desigSearch.toLowerCase())
   );
 
-  const StatCard = ({ title, data, filters, colorClass }: any) => {
+  const StatCard = ({ title, data, filters }: any) => {
     const basePath = filters.basePath || '/employees';
     const percentFilled = data?.total > 0 ? Math.round((data.filled / data.total) * 100) : 0;
     
@@ -76,21 +76,9 @@ export default function DashboardPage() {
     <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } } }}>
       <Card className={cn(
         "corporate-card border-none shadow-md hover:shadow-xl transition-all duration-500 group overflow-hidden bg-white relative h-full cursor-default",
-        "before:absolute before:top-0 before:left-0 before:w-full before:h-1",
-        colorClass === 'purple' ? "before:bg-purple-500" : 
-        colorClass === 'blue' ? "before:bg-blue-500" : 
-        colorClass === 'green' ? "before:bg-emerald-500" : 
-        colorClass === 'gray' ? "before:bg-slate-400" : "before:bg-rose-500"
+        "before:absolute before:top-0 before:left-0 before:w-full before:h-1 before:bg-[#405189]"
       )}>
         <div className="p-4 relative overflow-hidden">
-          {/* Subtle Background Gradient */}
-          <div className={cn(
-            "absolute -right-10 -top-10 w-32 h-32 rounded-full opacity-10 blur-2xl group-hover:opacity-20 transition-opacity",
-            colorClass === 'purple' ? "bg-purple-500" : 
-            colorClass === 'blue' ? "bg-blue-500" : 
-            colorClass === 'green' ? "bg-emerald-500" : 
-            colorClass === 'gray' ? "bg-slate-500" : "bg-rose-500"
-          )} />
           
           <h3 className="font-bold text-slate-800 uppercase text-[12px] font-black tracking-widest mb-3 relative z-10">{title}</h3>
 
@@ -116,13 +104,7 @@ export default function DashboardPage() {
             </div>
             <div className="w-full bg-slate-100 rounded-full h-[2px] overflow-hidden flex">
               <div 
-                className={cn(
-                  "h-full transition-all duration-1000 ease-out",
-                  colorClass === 'purple' ? "bg-purple-500" : 
-                  colorClass === 'blue' ? "bg-blue-500" : 
-                  colorClass === 'green' ? "bg-emerald-500" : 
-                  colorClass === 'gray' ? "bg-slate-500" : "bg-rose-500"
-                )} 
+                className="h-full transition-all duration-1000 ease-out bg-[#405189]" 
                 style={{ width: `${percentFilled}%` }}
               />
             </div>
