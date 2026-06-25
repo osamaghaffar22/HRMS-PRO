@@ -3,11 +3,25 @@ from typing import Optional, List, Any
 from datetime import datetime
 
 # --- User & Auth ---
+from pydantic import BaseModel, ConfigDict, field_validator
+import json
+from typing import Optional
+
 class UserBase(BaseModel):
     username: str
     full_name: Optional[str] = None
     role: str
     permissions: Optional[dict] = None
+
+    @field_validator('permissions', mode='before')
+    @classmethod
+    def parse_permissions(cls, v):
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except:
+                return {}
+        return v
 
 class UserCreate(UserBase):
     password: str
