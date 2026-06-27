@@ -33,7 +33,8 @@ import autoTable from 'jspdf-autotable';
 export default function FileTrackingPage() {
   const [search, setSearch] = useState('');
   const [putUpByFilter, setPutUpByFilter] = useState('');
-  const [putUpDateFilter, setPutUpDateFilter] = useState('');
+  const [fromDateFilter, setFromDateFilter] = useState('');
+  const [toDateFilter, setToDateFilter] = useState('');
   const [isHistoryView, setIsHistoryView] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingFile, setEditingFile] = useState<any>(null);
@@ -56,9 +57,25 @@ export default function FileTrackingPage() {
   const queryClient = useQueryClient();
 
   const { data: files, isLoading } = useQuery({
-    queryKey: ['file-tracking'],
+    queryKey: ['files'],
     queryFn: async () => {
       const res = await api.get('/api/files');
+      return res.data;
+    }
+  });
+
+  const { data: historyFiles, isLoading: isLoadingHistory } = useQuery({
+    queryKey: ['filesHistory'],
+    queryFn: async () => {
+      const res = await api.get('/api/files/history');
+      return res.data;
+    }
+  });
+
+  const { data: registry } = useQuery({
+    queryKey: ['fileRegistry'],
+    queryFn: async () => {
+      const res = await api.get('/api/files/registry');
       return res.data;
     }
   });
@@ -66,7 +83,7 @@ export default function FileTrackingPage() {
   const { data: employees } = useQuery({
     queryKey: ['employees'],
     queryFn: async () => {
-      const res = await api.get('/api/employees');
+      const res = await api.get('/api/employees?limit=-1');
       return res.data;
     }
   });
@@ -78,10 +95,14 @@ export default function FileTrackingPage() {
       const name = (e.name || "").toLowerCase();
       const postName = (e.post_name || "").toLowerCase();
       
-      return branch.includes("establishment") &&
+      const inBranch = branch.includes("establishment");
+      const isMubarak = name.includes("mubarak ali buriro");
+      
+      return (inBranch || isMubarak) &&
              !name.includes("vacant") &&
              !name.includes("bilal") &&
-             !postName.includes("naib qasid");
+             !postName.includes("naib qasid") &&
+             !postName.includes("driver");
     });
   }, [employees]);
 
@@ -97,7 +118,7 @@ export default function FileTrackingPage() {
   }, [employees]);
 
   const autocompleteOptions = useMemo(() => {
-    if (!employees && !files) return [];
+    if (!employees && !files && !registry) return [];
     
     const optionsMap = new Map();
     if (employees) {
@@ -106,25 +127,31 @@ export default function FileTrackingPage() {
       });
     }
 
-    if (files) {
-      files.forEach((f: any) => {
-        if (f.case_subject && !optionsMap.has(f.case_subject)) {
-          optionsMap.set(f.case_subject, {
-            id: `past-${f.id}`,
-            name: f.case_subject,
-            personal_file_no: f.file_name || ''
-          });
+    if (registry) {
+      registry.forEach((r: any) => {
+        if (r.file_name && !optionsMap.has(r.file_name)) {
+          optionsMap.set(r.file_name, { id: `reg-${r.id}`, name: r.file_name, personal_file_no: r.file_number });
         }
       });
     }
-    
+
+    if (files) {
+      files.forEach((f: any) => {
+        if (f.case_subject && !optionsMap.has(f.case_subject)) {
+          optionsMap.set(f.case_subject, { id: `f-${f.id}`, name: f.case_subject, personal_file_no: f.file_name });
+        }
+      });
+    }
+
     return Array.from(optionsMap.values());
-  }, [employees, files]);
+  }, [employees, files, registry]);
 
   const createMutation = useMutation({
     mutationFn: (newFile: any) => api.post('/api/files', newFile),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['file-tracking'] });
+      queryClient.invalidateQueries({ queryKey: ['files'] });
+      queryClient.invalidateQueries({ queryKey: ['filesHistory'] });
+      queryClient.invalidateQueries({ queryKey: ['fileRegistry'] });
       setIsAddOpen(false);
       resetForm();
     }
@@ -132,8 +159,26 @@ export default function FileTrackingPage() {
 
   const updateMutation = useMutation({
     mutationFn: (data: { id: number, updates: any }) => api.put(`/api/files/${data.id}`, data.updates),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['file-tracking'] });
+    onMutate: async (variables) => {
+      if (variables.updates.status === 'Closed') {
+        await queryClient.cancelQueries({ queryKey: ['files'] });
+        const previousFiles = queryClient.getQueryData(['files']);
+        queryClient.setQueryData(['files'], (oldData: any) => {
+          if (!oldData) return [];
+          return oldData.filter((file: any) => file.id !== variables.id);
+        });
+        return { previousFiles };
+      }
+    },
+    onError: (err, variables, context: any) => {
+      if (context?.previousFiles) {
+        queryClient.setQueryData(['files'], context.previousFiles);
+      }
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['files'] });
+      await queryClient.invalidateQueries({ queryKey: ['filesHistory'] });
+      await queryClient.invalidateQueries({ queryKey: ['fileRegistry'] });
       setIsAddOpen(false);
       resetForm();
     }
@@ -142,7 +187,9 @@ export default function FileTrackingPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: number) => api.delete(`/api/files/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['file-tracking'] });
+      queryClient.invalidateQueries({ queryKey: ['files'] });
+      queryClient.invalidateQueries({ queryKey: ['filesHistory'] });
+      queryClient.invalidateQueries({ queryKey: ['fileRegistry'] });
     }
   });
 
@@ -218,19 +265,32 @@ export default function FileTrackingPage() {
   };
 
   const filteredFiles = useMemo(() => {
-    if (!files) return [];
+    const sourceData = isHistoryView ? historyFiles : files;
+    if (!sourceData) return [];
     
-    // Default view shows non-closed files, History view shows only closed files
-    let result = files.filter((f: any) => 
-      isHistoryView ? f.status === 'Closed' : f.status !== 'Closed'
-    );
+    // In active view, explicitly filter out any files that might still be marked as 'Closed' in the active table 
+    // (e.g. from before the backend migration).
+    let result = sourceData;
+    if (!isHistoryView) {
+      result = result.filter((f: any) => f.status !== 'Closed');
+    }
 
     if (putUpByFilter) {
       result = result.filter((f: any) => f.put_up === putUpByFilter);
     }
+    
+    if (fromDateFilter) {
+      result = result.filter((f: any) => {
+        if (!f.put_up_date) return false;
+        return new Date(f.put_up_date) >= new Date(fromDateFilter);
+      });
+    }
 
-    if (putUpDateFilter) {
-      result = result.filter((f: any) => f.put_up_date === putUpDateFilter);
+    if (toDateFilter) {
+      result = result.filter((f: any) => {
+        if (!f.put_up_date) return false;
+        return new Date(f.put_up_date) <= new Date(toDateFilter);
+      });
     }
 
     if (search) {
@@ -247,7 +307,7 @@ export default function FileTrackingPage() {
     }
 
     return result;
-  }, [files, search, putUpByFilter, putUpDateFilter, isHistoryView]);
+  }, [files, historyFiles, search, putUpByFilter, fromDateFilter, toDateFilter, isHistoryView]);
 
   const formatDate = (dateStr: string) => {
     if (!dateStr || dateStr.toLowerCase().includes('not match')) return "—";
@@ -284,17 +344,21 @@ export default function FileTrackingPage() {
     
     const tableData = filteredFiles.map((f: any, i: number) => [
       i + 1,
+      f.file_name || '—',
+      f.case_subject || '—',
+      f.reason || '—',
+      f.put_up || '—',
+      formatDate(f.put_up_date),
+      f.mark_branch || '—',
       f.receiver_name || '—',
       formatDate(f.receiving_date),
       formatDate(f.return_date),
-      f.put_up || '—',
-      formatDate(f.put_up_date),
-      f.history ? f.history.map((h: any) => `${formatDate(h.date)}: ${h.action} (${h.remarks || ''})`).join(' | ') : '—'
+      f.status || '—'
     ]);
 
     if (type === 'excel') {
         const rows = tableData.map((f: any[]) => ({
-            'S.No': f[0], 'File Name': f[1], 'Subject': f[2], 'Reason': f[3],
+            'S.No': f[0], 'File Number': f[1], 'File Name': f[2], 'Reason': f[3],
             'Put Up By': f[4], 'Put Up Date': f[5], 'Mark Branch': f[6], 'Receiver Name': f[7],
             'Receiving Date': f[8], 'Return Date': f[9], 'Status': f[10]
         }));
@@ -316,7 +380,7 @@ export default function FileTrackingPage() {
         doc.text(dynamicTitle, 40, 40);
         autoTable(doc, {
             startY: 60,
-            head: [['#', 'File Name', 'Subject', 'Reason', 'Put Up', 'Put Up Date', 'Mark Branch', 'Receiver', 'Rcv Date', 'Return Date', 'Status']],
+            head: [['#', 'File Number', 'File Name', 'Reason/Case', 'Put Up By', 'Put Up Date', 'Mark Branch', 'Receiver', 'Rcv Date', 'Return Date', 'Status']],
             body: tableData,
             theme: 'grid',
             headStyles: { halign: 'center', valign: 'middle', fillColor: [64, 81, 137], textColor: [255, 255, 255], fontStyle: 'bold' },
@@ -352,7 +416,7 @@ export default function FileTrackingPage() {
     if (diffDays === 1) return { text: '1 day ago', isRed: false };
     if (diffDays < 0) return { text: '—', isRed: false };
     
-    return { text: `${diffDays} days ago`, isRed: diffDays >= 2 };
+    return { text: `${diffDays} days ago`, isRed: diffDays >= 3 };
   };
 
   return (
@@ -385,24 +449,37 @@ export default function FileTrackingPage() {
           </select>
         </div>
 
-        <div className="bg-white shadow-sm border border-slate-100 rounded-xl h-12 flex items-center px-3 w-40">
-          <Input 
-            type="date"
-            value={putUpDateFilter}
-            onChange={e => setPutUpDateFilter(e.target.value)}
-            className="w-full h-full border-none shadow-none focus-visible:ring-0 px-0 text-[12px] font-black uppercase text-slate-700 cursor-pointer bg-transparent"
-            title="Filter by Put Up Date"
-          />
+        <div className="flex items-center gap-2 bg-white shadow-sm border border-slate-100 rounded-xl px-2 h-12">
+          <div className="flex flex-col items-start justify-center">
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest pl-1 leading-none">From</span>
+            <Input 
+              type="date"
+              value={fromDateFilter}
+              onChange={e => setFromDateFilter(e.target.value)}
+              className="w-32 h-6 border-none shadow-none focus-visible:ring-0 px-1 text-[11px] font-black uppercase text-slate-700 cursor-pointer bg-transparent"
+            />
+          </div>
+          <div className="h-6 w-px bg-slate-200" />
+          <div className="flex flex-col items-start justify-center">
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest pl-1 leading-none">To</span>
+            <Input 
+              type="date"
+              value={toDateFilter}
+              onChange={e => setToDateFilter(e.target.value)}
+              className="w-32 h-6 border-none shadow-none focus-visible:ring-0 px-1 text-[11px] font-black uppercase text-slate-700 cursor-pointer bg-transparent"
+            />
+          </div>
         </div>
 
-        {(search || putUpByFilter || putUpDateFilter) && (
+        {(search || putUpByFilter || fromDateFilter || toDateFilter) && (
           <Button 
             variant="ghost" 
             className="h-12 px-4 text-rose-500 hover:text-rose-600 hover:bg-rose-50 font-black text-[11px] uppercase tracking-widest rounded-xl transition-all"
             onClick={() => {
               setSearch('');
               setPutUpByFilter('');
-              setPutUpDateFilter('');
+              setFromDateFilter('');
+              setToDateFilter('');
             }}
           >
             Clear Filters
@@ -448,12 +525,12 @@ export default function FileTrackingPage() {
                 <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="col-span-2 space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">File Name / No.</Label>
+                      <Label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">File Number</Label>
                       <Input required value={formData.file_name} onChange={e => setFormData({...formData, file_name: e.target.value})} className="h-10 border-none shadow-inner bg-slate-100 focus-visible:ring-primary/20 uppercase font-bold text-xs" placeholder="e.g., HR/2024/001" />
                     </div>
                     
                     <div className="col-span-2 space-y-1.5 relative">
-                      <Label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Case / Subject</Label>
+                      <Label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">File Name</Label>
                       <Input 
                         required 
                         value={subjectSearch} 
@@ -465,7 +542,7 @@ export default function FileTrackingPage() {
                         onFocus={() => setShowSubjectDropdown(true)}
                         onBlur={() => setTimeout(() => setShowSubjectDropdown(false), 200)}
                         className="h-10 border-none shadow-inner bg-slate-100 focus-visible:ring-primary/20 uppercase font-bold text-xs" 
-                        placeholder="Search Official Name or type manually..." 
+                        placeholder="Search File Name or type manually..." 
                       />
                       {showSubjectDropdown && subjectSearch && autocompleteOptions.length > 0 && (
                         <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-48 overflow-y-auto z-50">
@@ -564,8 +641,8 @@ export default function FileTrackingPage() {
             <TableHeader className="bg-[#405189]">
               <TableRow className="hover:bg-[#405189] border-none h-14">
                 <TableHead className="w-12 text-white font-black text-[12px] uppercase p-3 text-center">S.No</TableHead>
-                <TableHead className="w-40 text-white font-black text-[12px] uppercase p-3">File Name</TableHead>
-                <TableHead className="w-48 text-white font-black text-[12px] uppercase p-3">Case / Subject</TableHead>
+                <TableHead className="w-40 text-white font-black text-[12px] uppercase p-3">File Number</TableHead>
+                <TableHead className="w-48 text-white font-black text-[12px] uppercase p-3">File Name</TableHead>
                 <TableHead className="w-48 text-white font-black text-[12px] uppercase p-3">Reason / Case</TableHead>
                 <TableHead className="w-40 text-white font-black text-[12px] uppercase p-3">Put Up</TableHead>
                 <TableHead className="w-32 text-white font-black text-[12px] uppercase p-3 text-center">Put Up Date</TableHead>
@@ -606,17 +683,21 @@ export default function FileTrackingPage() {
                         {!['Completed', 'In Progress', 'Returned', 'Pending', 'Closed'].includes(f.status) && <span className="text-slate-600">{f.status || '—'}</span>}
                     </TableCell>
                     <TableCell className="text-center p-3 sticky right-0 bg-white shadow-[-5px_0_10px_-5px_rgba(0,0,0,0.05)] border-l border-slate-100">
-                      <div className="flex justify-center gap-1">
-                        <Button variant="ghost" size="sm" className="h-8 w-8 text-slate-500 hover:text-slate-700 hover:bg-slate-100 p-0 transition-colors" title="Close File" onClick={() => handleCloseFile(f)}>
-                          <XCircle className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 text-primary hover:bg-primary/10 p-0" title="Edit" onClick={() => handleEdit(f)}>
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 text-rose-400 hover:text-rose-600 hover:bg-rose-50 p-0 transition-colors" title="Delete" onClick={() => deleteMutation.mutate(f.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      {isHistoryView ? (
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Archived</span>
+                      ) : (
+                        <div className="flex items-center justify-center space-x-1">
+                          <Button variant="ghost" size="icon" onClick={() => handleCloseFile(f)} className="h-8 w-8 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-full" title="Close File">
+                            <XCircle className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleEdit(f)} className="h-8 w-8 text-slate-500 hover:text-primary hover:bg-primary/10 rounded-full" title="Edit">
+                            <Edit2 className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(f.id)} className="h-8 w-8 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-full" title="Delete">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))

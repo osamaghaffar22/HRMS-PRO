@@ -176,6 +176,29 @@ class FileTracking(Base):
     status = Column(String, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+class FileHistory(Base):
+    __tablename__ = "file_history"
+    id = Column(Integer, primary_key=True)
+    file_name = Column(String, index=True)
+    case_subject = Column(String)
+    reason = Column(String)
+    put_up = Column(String)
+    put_up_date = Column(String)
+    mark_branch = Column(String)
+    receiver_name = Column(String, index=True)
+    receiving_date = Column(String)
+    return_date = Column(String)
+    status = Column(String, index=True)
+    closed_at = Column(DateTime, default=datetime.utcnow)
+
+class FileRegistry(Base):
+    __tablename__ = "file_registry"
+    id = Column(Integer, primary_key=True)
+    file_number = Column(String, index=True)
+    file_name = Column(String, index=True)
+    subject = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
 class AuditLog(Base):
     __tablename__ = "audit_logs"
     id = Column(Integer, primary_key=True)

@@ -16,12 +16,17 @@ def get_files(db: Session = Depends(get_db)):
 
 @router.post("/", response_model=schemas.FileTracking)
 def create_file(file_data: schemas.FileTrackingCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if file_data.case_subject:
-        db.query(models.FileTracking).filter(
-            models.FileTracking.case_subject == file_data.case_subject,
-            models.FileTracking.status == 'Closed'
-        ).delete(synchronize_session=False)
-    
+    # Auto-register to FileRegistry if new
+    if file_data.file_name and file_data.case_subject:
+        exists = db.query(models.FileRegistry).filter(
+            models.FileRegistry.file_number == file_data.file_name
+        ).first()
+        if not exists:
+            new_reg = models.FileRegistry(
+                file_number=file_data.file_name,
+                file_name=file_data.case_subject
+            )
+            db.add(new_reg)
     db_file = models.FileTracking(**file_data.model_dump())
     db.add(db_file)
     db.commit()
@@ -47,6 +52,7 @@ def update_file(file_id: int, file_data: schemas.FileTrackingUpdate, db: Session
         raise HTTPException(status_code=404, detail="File not found")
         
     old_data = {
+        "id": db_file.id,
         "file_name": db_file.file_name,
         "case_subject": db_file.case_subject,
         "reason": db_file.reason,
@@ -56,14 +62,35 @@ def update_file(file_id: int, file_data: schemas.FileTrackingUpdate, db: Session
         "receiver_name": db_file.receiver_name,
         "receiving_date": db_file.receiving_date,
         "return_date": db_file.return_date,
-        "status": db_file.status
+        "status": db_file.status,
+        "created_at": db_file.created_at
     }
     
     for key, value in file_data.model_dump(exclude_unset=True).items():
         setattr(db_file, key, value)
         
+    # If file is closed, move it to FileHistory and remove from active FileTracking
+    if file_data.status == 'Closed' and db_file.status == 'Closed':
+        history_record = models.FileHistory(
+            file_name=db_file.file_name,
+            case_subject=db_file.case_subject,
+            reason=db_file.reason,
+            put_up=db_file.put_up,
+            put_up_date=db_file.put_up_date,
+            mark_branch=db_file.mark_branch,
+            receiver_name=db_file.receiver_name,
+            receiving_date=db_file.receiving_date,
+            return_date=db_file.return_date,
+            status=db_file.status,
+            closed_at=datetime.utcnow()
+        )
+        db.add(history_record)
+        db.delete(db_file)
+        
     db.commit()
-    db.refresh(db_file)
+    # Note: If it was closed, db_file is deleted. We cannot refresh it.
+    if file_data.status != 'Closed':
+        db.refresh(db_file)
     
     # Audit log
     audit_log = models.AuditLog(
@@ -77,7 +104,18 @@ def update_file(file_id: int, file_data: schemas.FileTrackingUpdate, db: Session
     db.add(audit_log)
     db.commit()
     
+    # If we deleted it because it was closed, return the old data structure
+    if file_data.status == 'Closed':
+        return old_data
     return db_file
+
+@router.get("/registry")
+def get_registry(db: Session = Depends(get_db)):
+    return db.query(models.FileRegistry).order_by(models.FileRegistry.id.desc()).all()
+
+@router.get("/history")
+def get_history(db: Session = Depends(get_db)):
+    return db.query(models.FileHistory).order_by(models.FileHistory.id.desc()).all()
 
 @router.delete("/{file_id}")
 def delete_file(file_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
