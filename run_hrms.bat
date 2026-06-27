@@ -8,30 +8,16 @@ echo          HRMS PRO - ENTERPRISE SYSTEMS LAUNCHER
 echo =======================================================================
 echo.
 echo  This script will start the complete HRMS suite:
-echo   1. Database container (Docker)
-echo   2. Python FastAPI Backend (Port 8000)
-echo   3. Next.js Production Frontend (Port 3000)
+echo   1. Python FastAPI Backend (Port 8000)
+echo   2. Next.js Production Frontend (Port 3000)
 echo.
 echo  Access link for other PCs in your office network:
 echo  http://[SERVER-IP-ADDRESS]:3000
 echo  =======================================================================
 echo.
 
-:: Step 1: Start Docker Database Container
-echo [1/3] Starting Database Container (Docker compose)...
-docker compose up -d db
-if %errorlevel% neq 0 (
-    echo [WARNING] Failed to start Docker container. 
-    echo Ensure Docker Desktop is running if you are using PostgreSQL.
-    echo If you are using SQLite default, you can ignore this warning.
-    echo.
-) else (
-    echo [SUCCESS] Database container is running.
-    echo.
-)
-
-:: Step 2: Start Backend Server
-echo [2/3] Preparing Python Backend...
+:: Step 1: Start Backend Server
+echo [1/2] Preparing Python Backend...
 set PY_CMD=python
 if exist "backend\venv\Scripts\activate.bat" (
     echo Found virtual environment: venv
@@ -53,8 +39,8 @@ if not "%ACTIVATE_ENV%"=="" (
 echo [SUCCESS] Backend startup command sent.
 echo.
 
-:: Step 3: Start Frontend Server
-echo [3/3] Preparing Next.js Frontend (Live Reload Mode)...
+:: Step 2: Start Frontend Server
+echo [2/2] Starting Next.js Frontend... (Live Reload Mode)...
 
 echo Starting Frontend Server in a new window...
 start "HRMS Frontend" cmd /k "cd frontend && npm run dev -- -H 0.0.0.0 -p 3000"
