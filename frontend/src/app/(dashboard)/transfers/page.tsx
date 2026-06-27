@@ -139,26 +139,59 @@ export default function TransfersPage() {
     }
   });
 
-  const handleExport = (type: 'excel' | 'pdf') => {
+  const generateDynamicTitle = () => {
+      let subject = "Transfer & Posting History Report";
+      let parts = [];
+      if (regionFilter.length > 0) parts.push(`Region: ${regionFilter.join(', ')}`);
+      if (officeFilter.length > 0) parts.push(`Office: ${officeFilter.join(', ')}`);
+      if (historySearch) parts.push(`matching "${historySearch}"`);
+      return `${subject} ${parts.join(' - ')}`.trim();
+  };
+
+  const handleExport = async (type: 'excel' | 'pdf' | 'print') => {
     if (filteredRecords.length === 0) return;
+    
+    const dynamicTitle = generateDynamicTitle();
+
     if (type === 'excel') {
         const rows = filteredRecords.map((r: any, i: number) => ({
-            'S.No': i + 1, 'Name': r.employee_name, 'Designation': r.employee_post, 'BPS': r.employee_bs,
-            'New Region': r.new_region, 'New Office': r.new_branch_office, 'Order #': r.order_number, 'Order Date': r.order_date
+            'S.No': i + 1, 'Name': r.employee_name || '', 'Designation': r.employee_post || '', 'BPS': r.employee_bs || '',
+            'New Region': r.new_region || '', 'New Office': r.new_branch_office || '', 'Order #': r.order_number || '', 'Order Date': r.order_date || ''
         }));
-        const ws = XLSX.utils.json_to_sheet(rows);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Transfers_Report");
-        XLSX.writeFile(wb, `Transfers_Report_${new Date().getTime()}.xlsx`);
+        try {
+            const response = await api.post('/api/export/excel-generic', { title: dynamicTitle, data: rows }, { responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `Transfers_Report_${new Date().getTime()}.xlsx`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (error) {
+            console.error("Export failed", error);
+            alert("Export failed.");
+        }
     } else {
         const doc = new jsPDF('landscape', 'pt', 'a4');
-        doc.text(`Transfer & Posting History Report`, 40, 40);
+        doc.text(dynamicTitle, 40, 40);
         autoTable(doc, {
             startY: 60,
             head: [['#', 'Name', 'Designation', 'BPS', 'New Region', 'New Office', 'Order #', 'Order Date']],
-            body: filteredRecords.map((r: any, i: number) => [i + 1, r.employee_name, r.employee_post, r.employee_bs, r.new_region, r.new_branch_office, r.order_number, r.order_date]),
+            body: filteredRecords.map((r: any, i: number) => [i + 1, r.employee_name || '', r.employee_post || '', r.employee_bs || '', r.new_region || '', r.new_branch_office || '', r.order_number || '', r.order_date || '']),
+            theme: 'grid',
+            headStyles: { halign: 'center', valign: 'middle', fillColor: [64, 81, 137], textColor: [255, 255, 255], fontStyle: 'bold' },
+            bodyStyles: { halign: 'center', valign: 'middle', fillColor: [255, 255, 255], textColor: [0, 0, 0] },
+            alternateRowStyles: { fillColor: [255, 255, 255] },
+            columnStyles: { 1: { halign: 'left' } },
+            styles: { fontSize: 8 }
         });
-        doc.save(`Transfers_Report_${new Date().getTime()}.pdf`);
+        if (type === 'pdf') {
+            doc.save(`Transfers_Report_${new Date().getTime()}.pdf`);
+        } else {
+            doc.autoPrint();
+            const blob = doc.output('blob');
+            window.open(URL.createObjectURL(blob), '_blank');
+        }
     }
   };
 
@@ -197,7 +230,7 @@ export default function TransfersPage() {
         </div>
         <div className="bg-white px-6 h-12 rounded-xl font-bold text-slate-700 border border-slate-100 flex items-center shadow-sm">Total: {filteredRecords.length}</div>
         <div className="flex gap-2 ml-auto">
-            <Button variant="secondary" className="h-12 px-5 rounded-xl font-semibold" onClick={() => window.print()}><Printer className="h-4 w-4 mr-2" /> Print</Button>
+            <Button variant="secondary" className="h-12 px-5 rounded-xl font-semibold" onClick={() => handleExport('print')}><Printer className="h-4 w-4 mr-2" /> Print</Button>
             <Button variant="secondary" className="h-12 px-5 rounded-xl font-semibold" onClick={() => handleExport('pdf')}><FileJson className="h-4 w-4 mr-2" /> PDF</Button>
             <Button variant="secondary" className="h-12 px-5 rounded-xl font-semibold" onClick={() => handleExport('excel')}><FileDown className="h-4 w-4 mr-2" /> Excel</Button>
         </div>

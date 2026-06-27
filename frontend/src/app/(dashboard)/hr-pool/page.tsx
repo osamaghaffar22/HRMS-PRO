@@ -523,6 +523,21 @@ function EmployeesContent() {
   const [editingEmp, setEditingEmp] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("personal");
 
+  const [separatingEmp, setSeparatingEmp] = useState<any>(null);
+  const [separationReason, setSeparationReason] = useState("");
+  const [separationDate, setSeparationDate] = useState("");
+
+  const [revertingEmp, setRevertingEmp] = useState<any>(null);
+  const [revertData, setRevertData] = useState({
+    new_post_name: '',
+    new_branch_office: '',
+    new_region: '',
+    order_number: '',
+    order_date: '',
+    joining_date: '',
+    remarks: ''
+  });
+
   const [search, setSearch] = useState('');
 
   const [filters, setFilters] = useState<any>({
@@ -608,11 +623,36 @@ function EmployeesContent() {
   const totalCount = queryData?.totalCount || 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / 100));
 
+  const { data: hrPoolDesignations } = useQuery({
+    queryKey: ['hr-pool-designations'],
+    queryFn: async () => {
+      const res = await api.get('/api/hr-pool?limit=5000');
+      return Array.from(new Set(res.data.map((e: any) => e.post_name).filter(Boolean))).sort() as string[];
+    }
+  });
+
   const updateEmpMutation = useMutation({
     mutationFn: (data: { id: number; data: any }) => api.put(`/api/hr-pool/${data.id}`, data.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       setEditingEmp(null);
+    }
+  });
+
+  const separateMutation = useMutation({
+    mutationFn: async () => {
+      if (!separatingEmp || !separationReason) throw new Error("Missing separation info");
+      return api.post(`/api/hr-pool/${separatingEmp.id}/separate`, {
+        separation_type: separationReason,
+        separation_date: separationDate || new Date().toISOString().split('T')[0]
+      });
+    },
+    onSuccess: () => {
+      alert("Employee moved to Extra successfully");
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      setSeparatingEmp(null);
+      setSeparationReason("");
+      setSeparationDate("");
     }
   });
 
@@ -647,13 +687,19 @@ function EmployeesContent() {
   });
 
   const revertMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const res = await api.post(`/api/hr-pool/${id}/revert`);
+    mutationFn: async () => {
+      if (!revertingEmp || !revertData.new_post_name || !revertData.new_branch_office) throw new Error("Missing required placement info");
+      const res = await api.post(`/api/hr-pool/${revertingEmp.id}/revert`, revertData);
       return res.data;
     },
     onSuccess: () => {
-      alert("Employee successfully reverted to active seat");
+      alert("Employee successfully reverted and transferred to active seat");
       queryClient.invalidateQueries({ queryKey: ['employees'] });
+      setRevertingEmp(null);
+      setRevertData({ new_post_name: '', new_branch_office: '', new_region: '', order_number: '', order_date: '', joining_date: '', remarks: '' });
+    },
+    onError: (err: any) => {
+      alert(err.response?.data?.detail || "Error reverting employee");
     }
   });
 
@@ -728,46 +774,119 @@ function EmployeesContent() {
 
   const sortedEmployees = employees;
 
-  const handleExport = (type: 'excel' | 'pdf') => {
+  const generateDynamicTitle = () => {
+      let subject = "HR Pool Employees";
+      
+      const isVacant = filters.post_status?.includes('Vacant') && filters.post_status?.length === 1;
+      const isFilled = filters.post_status?.includes('Filled') && filters.post_status?.length === 1;
+      
+      if (isVacant) subject = "Vacant HR Pool Seats";
+      else if (isFilled) subject = "Filled HR Pool Posts";
+
+      if (filters.officer_official?.length > 0) {
+          subject = `${filters.officer_official.join(' / ')} ${subject}`;
+      }
+
+      let parts = [];
+
+      if (filters.post_name?.length > 0) {
+          parts.push(`for ${filters.post_name.join(', ')}`);
+      }
+
+      let loc = [];
+      if (filters.branch_office?.length > 0) loc.push(filters.branch_office.join(', '));
+      if (filters.hq_field?.length > 0) loc.push(filters.hq_field.join(', '));
+      if (filters.region?.length > 0) loc.push(filters.region.join(', '));
+      
+      if (loc.length > 0) {
+          parts.push(`in ${loc.join(' - ')}`);
+      }
+
+      if (filters.domicile?.length > 0) {
+          parts.push(`(Domicile: ${filters.domicile.join(', ')})`);
+      }
+
+      if (search) {
+          parts.push(`matching "${search}"`);
+      }
+
+      if (parts.length === 0 && subject === "HR Pool Employees") {
+          return "HR Pool Registry Report";
+      }
+
+      return `List of ${subject} ${parts.join(' ')}`.trim();
+  };
+
+  const handleExport = async (type: 'excel' | 'pdf' | 'print') => {
     if (!sortedEmployees.length) return;
+    
+    const dynamicTitle = generateDynamicTitle();
+    
     if (type === 'excel') {
-        const ws = XLSX.utils.json_to_sheet(sortedEmployees.map((e: any, i: number) => ({
+        const data = sortedEmployees.map((e: any, i: number) => ({
             'S.No': i + 1, 
-            'Name': e.name, 
-            'Designation': e.post_name, 
-            'BPS': e.bs, 
-            'Office/Branch': e.branch_office,
-            'Domicile': e.domicile,
+            'Name': e.name || '', 
+            'Designation': e.post_name || '', 
+            'BPS': e.bs || '', 
+            'Office/Branch': e.branch_office || '',
+            'Domicile': e.domicile || '',
             'Appointment Date': formatDisplayDate(e.joining_date),
             'LIEN Start': formatDisplayDate(e.lien_start_date),
             'LIEN End': formatDisplayDate(e.lien_end_date),
             'LIEN Duration': calculateDuration(e.lien_start_date),
             'LIEN Time': e.lien_approved_time || '---'
-        })));
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Employees");
-        XLSX.writeFile(wb, `Employees_Export_${new Date().getTime()}.xlsx`);
+        }));
+        
+        try {
+            const response = await api.post('/api/export/excel-generic', {
+                title: dynamicTitle,
+                data: data
+            }, { responseType: 'blob' });
+            
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `HRPool_Export_${new Date().getTime()}.xlsx`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (error) {
+            console.error("Export failed", error);
+            alert("Export failed.");
+        }
     } else {
         const doc = new jsPDF('landscape');
-        doc.text("Personnel Registry Report", 14, 15);
+        doc.text(dynamicTitle, 14, 15);
         autoTable(doc, {
             startY: 20,
             head: [['#', 'Name', 'Designation', 'BPS', 'Office/Branch', 'Domicile', 'Appt. Date', 'LIEN Start', 'LIEN End', 'Duration', 'LIEN Time']],
             body: sortedEmployees.map((e: any, i: number) => [
                 i + 1, 
-                e.name, 
-                e.post_name, 
-                e.bs, 
-                e.branch_office, 
-                e.domicile, 
+                e.name || '', 
+                e.post_name || '', 
+                e.bs || '', 
+                e.branch_office || '', 
+                e.domicile || '', 
                 formatDisplayDate(e.joining_date), 
                 formatDisplayDate(e.lien_start_date),
                 formatDisplayDate(e.lien_end_date),
                 calculateDuration(e.lien_start_date),
                 e.lien_approved_time || '---'
             ]),
+            theme: 'grid',
+            headStyles: { halign: 'center', valign: 'middle', fillColor: [64, 81, 137], textColor: [255, 255, 255], fontStyle: 'bold' },
+            bodyStyles: { halign: 'center', valign: 'middle', fillColor: [255, 255, 255], textColor: [0, 0, 0] },
+            alternateRowStyles: { fillColor: [255, 255, 255] },
+            columnStyles: { 1: { halign: 'left' } }
         });
-        doc.save(`Employees_Export_${new Date().getTime()}.pdf`);
+        
+        if (type === 'pdf') {
+            doc.save(`HRPool_Export_${new Date().getTime()}.pdf`);
+        } else {
+            doc.autoPrint();
+            const blob = doc.output('blob');
+            window.open(URL.createObjectURL(blob), '_blank');
+        }
     }
   };
 
@@ -795,6 +914,42 @@ function EmployeesContent() {
       return `${day}-${month}-${year}`;
     }
     return dateStr;
+  };
+
+  const isLienExpired = (startDateStr: string, durationStr: string) => {
+    if (!startDateStr || !durationStr || startDateStr.toLowerCase().includes('not match') || durationStr === '---') return false;
+    try {
+      let parsedDateStr = startDateStr;
+      if (/^\d{1,2}[-/]\d{1,2}[-/]\d{4}$/.test(startDateStr)) {
+        const parts = startDateStr.split(/[-/]/);
+        parsedDateStr = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+      }
+      const start = new Date(parsedDateStr);
+      if (isNaN(start.getTime())) return false;
+      
+      let end = new Date(start);
+      const lowerDur = durationStr.toLowerCase();
+      const num = parseInt(durationStr.split(' ')[0]);
+      if (isNaN(num)) return false;
+      
+      if (lowerDur.includes('year')) {
+        end.setFullYear(end.getFullYear() + num);
+      } else if (lowerDur.includes('month')) {
+        end.setMonth(end.getMonth() + num);
+      } else if (lowerDur.includes('day')) {
+        end.setDate(end.getDate() + num);
+      } else {
+        return false;
+      }
+      
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      end.setHours(0,0,0,0);
+      
+      return today >= end;
+    } catch {
+      return false;
+    }
   };
 
   const calculateDuration = (startDateStr: string) => {
@@ -962,14 +1117,14 @@ function EmployeesContent() {
   return (
     <div className="space-y-6 w-full pb-10">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 className="text-4xl font-extrabold text-slate-900 tracking-tighter uppercase italic">HR Strategic <span className="text-primary">Pool</span></h1>
+        <h1 className="text-4xl font-extrabold text-slate-900 tracking-tighter uppercase italic">HR <span className="text-primary">Pool</span></h1>
       </div>
 
       <Card className="border-none shadow-sm bg-white overflow-visible rounded-xl border border-slate-100 no-print z-50">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 p-4 items-start">
-          <div className="w-full"><MultiSelect label="Designation" options={filterOptions?.post_name || []} selected={filters.post_name} onChange={(vals) => setFilters({...filters, post_name: vals})} placeholder="Designation" /></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 p-4 items-center">
+          <div className="w-full"><MultiSelect label="Designation" options={hrPoolDesignations || []} selected={filters.post_name} onChange={(vals) => setFilters({...filters, post_name: vals})} placeholder="Designation" /></div>
           <div className="w-full"><MultiSelect label="Domicile" options={filterOptions?.domicile || []} selected={filters.domicile} onChange={(vals) => setFilters({...filters, domicile: vals})} placeholder="Domicile" /></div>
-          <div className="flex items-start justify-center h-full">
+          <div className="flex items-center justify-start h-full">
              <Button variant="ghost" size="sm" className="h-[40px] px-4 w-full text-[10px] font-black text-rose-500 uppercase hover:bg-rose-50 border border-rose-100 rounded-xl" onClick={resetFilters}>Clear All</Button>
           </div>
         </div>
@@ -989,19 +1144,23 @@ function EmployeesContent() {
             <div className="w-[1px] h-6 bg-slate-100" />
             <Button variant="ghost" size="sm" className="h-9 px-4 text-[11px] font-black text-slate-600 uppercase rounded-lg flex items-center gap-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all" onClick={() => handleExport('pdf')}><FileJson className="h-4 w-4 text-rose-600" /> PDF</Button>
             <div className="w-[1px] h-6 bg-slate-100" />
-            <Button variant="ghost" size="sm" className="h-9 px-4 text-[11px] font-black text-slate-600 uppercase rounded-lg flex items-center gap-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all" onClick={() => window.print()}><Printer className="h-4 w-4 text-blue-600" /> Print</Button>
+            <Button variant="ghost" size="sm" className="h-9 px-4 text-[11px] font-black text-slate-600 uppercase rounded-lg flex items-center gap-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all" onClick={() => handleExport('print')}><Printer className="h-4 w-4 text-blue-600" /> Print</Button>
         </div>
       </div>
 
-      <Card className="border-none shadow-2xl overflow-hidden bg-white rounded-3xl border border-slate-100">
+      <Card className="border-none shadow-2xl overflow-hidden bg-white rounded-3xl border border-slate-100 min-h-[500px] print-area print:!shadow-none print:!border-none print:!rounded-none">
+        <div className="hidden print:block print-header w-full">
+           <h1>{generateDynamicTitle()}</h1>
+           <p>Total Records: {sortedEmployees.length}</p>
+        </div>
         <Table className="table-fixed w-full">
           <TableHeader className="bg-[#405189]">
             <TableRow className="border-none hover:bg-white/5 h-14">
               <TableHead className="w-[3%] text-white font-black text-[10px] uppercase p-2 text-center">S.No</TableHead>
-              <TableHead className="w-[22%] text-white font-black text-[12px] uppercase p-2 cursor-pointer group" onClick={() => handleSort('name')}>
+              <TableHead className="w-[15%] text-white font-black text-[12px] uppercase p-2 cursor-pointer group" onClick={() => handleSort('name')}>
                 <div className="flex items-center">Name <SortIcon column="name" /></div>
               </TableHead>
-              <TableHead className="w-[22%] text-white font-black text-[12px] uppercase p-2 cursor-pointer group" onClick={() => handleSort('post_name')}>
+              <TableHead className="w-[15%] text-white font-black text-[12px] uppercase p-2 cursor-pointer group" onClick={() => handleSort('post_name')}>
                 <div className="flex items-center">Designation <SortIcon column="post_name" /></div>
               </TableHead>
               <TableHead className="w-[4%] text-white font-black text-[12px] uppercase p-2 text-center cursor-pointer group" onClick={() => handleSort('bs')}>
@@ -1010,25 +1169,25 @@ function EmployeesContent() {
               <TableHead className="w-[15%] text-white font-black text-[12px] uppercase p-2 pl-12 cursor-pointer group" onClick={() => handleSort('branch_office')}>
                 <div className="flex items-center">Office/Branch <SortIcon column="branch_office" /></div>
               </TableHead>
-              <TableHead className="w-[7%] text-white font-black text-[11px] uppercase p-2 cursor-pointer group" onClick={() => handleSort('domicile')}>
+              <TableHead className="w-[6%] text-white font-black text-[11px] uppercase p-2 cursor-pointer group" onClick={() => handleSort('domicile')}>
                 <div className="flex items-center">Domicile <SortIcon column="domicile" /></div>
               </TableHead>
-              <TableHead className="w-[7%] text-white font-black text-[11px] uppercase p-2 text-center cursor-pointer group" onClick={() => handleSort('joining_date')}>
+              <TableHead className="w-[6%] text-white font-black text-[11px] uppercase p-2 text-center cursor-pointer group" onClick={() => handleSort('joining_date')}>
                 <div className="flex items-center justify-center">Appt. Date <SortIcon column="joining_date" /></div>
               </TableHead>
-              <TableHead className="w-[7%] text-white font-black text-[11px] uppercase p-2 text-center cursor-pointer group" onClick={() => handleSort('lien_start_date')}>
+              <TableHead className="w-[6%] text-white font-black text-[11px] uppercase p-2 text-center cursor-pointer group" onClick={() => handleSort('lien_start_date')}>
                 <div className="flex items-center justify-center">LIEN Start <SortIcon column="lien_start_date" /></div>
               </TableHead>
-              <TableHead className="w-[7%] text-white font-black text-[11px] uppercase p-2 text-center cursor-pointer group" onClick={() => handleSort('lien_end_date')}>
+              <TableHead className="w-[6%] text-white font-black text-[11px] uppercase p-2 text-center cursor-pointer group" onClick={() => handleSort('lien_end_date')}>
                 <div className="flex items-center justify-center">LIEN End <SortIcon column="lien_end_date" /></div>
               </TableHead>
-              <TableHead className="w-[8%] text-white font-black text-[11px] uppercase p-2 text-center cursor-pointer group" onClick={() => handleSort('lien_start_date')}>
+              <TableHead className="w-[6%] text-white font-black text-[11px] uppercase p-2 text-center cursor-pointer group" onClick={() => handleSort('lien_start_date')}>
                 <div className="flex items-center justify-center">Duration <SortIcon column="lien_start_date" /></div>
               </TableHead>
-              <TableHead className="w-[7%] text-white font-black text-[11px] uppercase p-2 text-center cursor-pointer group" onClick={() => handleSort('lien_approved_time')}>
+              <TableHead className="w-[6%] text-white font-black text-[11px] uppercase p-2 text-center cursor-pointer group" onClick={() => handleSort('lien_approved_time')}>
                 <div className="flex items-center justify-center">LIEN Time <SortIcon column="lien_approved_time" /></div>
               </TableHead>
-              <TableHead className="w-[5%] text-center text-white font-black text-[11px] uppercase p-2">Actions</TableHead>
+              <TableHead className="w-[12%] text-center text-white font-black text-[11px] uppercase p-2">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1038,7 +1197,7 @@ function EmployeesContent() {
               <TableRow><TableCell colSpan={10} className="text-center py-32 text-slate-300 font-black uppercase text-[10px] italic">No matching registry records</TableCell></TableRow>
             ) : (
               sortedEmployees.map((e: any, i: number) => (
-                <TableRow key={e.id} id={`emp-${e.id}`} className={cn("group hover:bg-slate-50 border-b-slate-50 min-h-20 transition-all", highlightId === e.id.toString() && "bg-primary/5 animate-pulse")}>
+                <TableRow key={e.id} id={`emp-${e.id}`} className={cn("group hover:bg-slate-50 border-b-slate-50 min-h-20 transition-all", highlightId === e.id.toString() && "bg-primary/5", isLienExpired(e.lien_start_date, e.lien_approved_time) && "bg-rose-50 hover:bg-rose-100")}>
                   <TableCell className="text-center font-black text-slate-300 text-[11px] p-2">{(page - 1) * 100 + i + 1}</TableCell>
                   <TableCell className="p-2 whitespace-normal break-words">
                       <span className="font-black text-slate-900 text-[14px] uppercase tracking-tight leading-tight">{e.name}</span>
@@ -1055,20 +1214,25 @@ function EmployeesContent() {
                   <TableCell className="p-2 text-[12px] font-bold text-slate-500 text-center uppercase tabular-nums leading-tight">{formatDisplayDate(e.lien_start_date)}</TableCell>
                   <TableCell className="p-2 text-[12px] font-bold text-slate-500 text-center uppercase tabular-nums leading-tight">{formatDisplayDate(e.lien_end_date)}</TableCell>
                   <TableCell className="p-2 text-center">
-                    <span className="text-[12px] font-black text-primary uppercase bg-primary/5 px-1.5 py-0.5 rounded whitespace-nowrap">
+                    <span className={cn("text-[12px] font-black uppercase px-1.5 py-0.5 rounded whitespace-nowrap", isLienExpired(e.lien_start_date, e.lien_approved_time) ? "text-rose-600 bg-rose-100" : "text-primary bg-primary/5")}>
                       {calculateDuration(e.lien_start_date)}
                     </span>
                   </TableCell>
-                  <TableCell className="p-2 text-[12px] font-bold text-slate-500 text-center uppercase tabular-nums leading-tight">{e.lien_approved_time || '---'}</TableCell>
+                  <TableCell className="p-2 text-[12px] font-bold text-slate-500 text-center uppercase tabular-nums leading-tight whitespace-normal break-words">{e.lien_approved_time || '---'}</TableCell>
                   <TableCell className="text-center p-2">
                     <div className="flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-all" title={canEdit ? "Edit Employee" : "View master record"} onClick={() => setEditingEmp(e)}>
                         {canEdit ? <Edit2 className="h-3.5 w-3.5" /> : <Search className="h-3.5 w-3.5" />}
                       </Button>
                       {canEdit && (
-                        <Button variant="outline" size="sm" onClick={() => { if(window.confirm('Are you sure you want to revert this employee back to active status?')) revertMutation.mutate(e.id); }} className="h-8 hover:bg-emerald-50 text-emerald-600 border-emerald-200">
+                        <>
+                        <Button variant="outline" size="sm" onClick={() => setRevertingEmp(e)} className="h-8 hover:bg-emerald-50 text-emerald-600 border-emerald-200" title="Revert to Active Seat">
                           Revert
                         </Button>
+                        <Button variant="outline" size="sm" onClick={() => setSeparatingEmp(e)} className="h-8 hover:bg-rose-50 text-rose-600 border-rose-200" title="Move to Extra">
+                          Extra
+                        </Button>
+                        </>
                       )}
                     </div>
                   </TableCell>
@@ -1192,6 +1356,98 @@ function EmployeesContent() {
         </DialogContent>
       </Dialog>
 
+      {separatingEmp && (
+        <Dialog open={!!separatingEmp} onOpenChange={(open) => !open && setSeparatingEmp(null)}>
+          <DialogContent className="sm:max-w-[400px]">
+            <DialogHeader>
+              <DialogTitle>Move to Extra</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+               <p className="text-xs font-bold text-slate-500">You are moving <strong className="text-rose-600">{separatingEmp.name}</strong> out of the HR Pool.</p>
+               <div className="space-y-2">
+                 <Label className="text-xs">Separation Reason</Label>
+                 <Select value={separationReason} onValueChange={(val) => setSeparationReason(val as string)}>
+                   <SelectTrigger className="border-slate-200/50 w-full h-10 bg-slate-50">
+                     <SelectValue placeholder="Select Reason..." />
+                   </SelectTrigger>
+                   <SelectContent>
+                     <SelectItem value="Lien Completed">Lien Completed</SelectItem>
+                     <SelectItem value="Retirement">Retirement</SelectItem>
+                     <SelectItem value="Resignation">Resignation</SelectItem>
+                     <SelectItem value="Death">Death</SelectItem>
+                     <SelectItem value="Dismissal">Dismissal</SelectItem>
+                     <SelectItem value="Other">Other</SelectItem>
+                   </SelectContent>
+                 </Select>
+               </div>
+               <div className="space-y-2">
+                 <Label className="text-xs">Date of Action</Label>
+                 <Input type="date" className="border-slate-200/50 h-10" value={separationDate} onChange={(e) => setSeparationDate(e.target.value)} />
+               </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-4">
+              <Button variant="outline" onClick={() => setSeparatingEmp(null)}>Cancel</Button>
+              <Button onClick={() => separateMutation.mutate()} disabled={separateMutation.isPending} className="bg-rose-600 hover:bg-rose-700 text-white">Move to Extra</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {revertingEmp && (
+        <Dialog open={!!revertingEmp} onOpenChange={(open) => !open && setRevertingEmp(null)}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Transfer / Posting on Revert</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+               <p className="text-xs font-bold text-slate-500">You are reverting <strong className="text-emerald-600">{revertingEmp.name}</strong> from HR Pool. Where should they be posted?</p>
+               <div className="grid grid-cols-2 gap-4">
+                 <div className="space-y-2">
+                   <Label className="text-xs">New Designation</Label>
+                   <Select value={revertData.new_post_name} onValueChange={(val) => setRevertData({...revertData, new_post_name: val})}>
+                     <SelectTrigger className="border-slate-200/50 bg-slate-50"><SelectValue placeholder="Select Designation" /></SelectTrigger>
+                     <SelectContent className="max-h-[200px]">{filterOptions?.post_name?.filter((p: any) => p).map((p: any) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                   </Select>
+                 </div>
+                 <div className="space-y-2">
+                   <Label className="text-xs">New Office/Branch</Label>
+                   <Select value={revertData.new_branch_office} onValueChange={(val) => setRevertData({...revertData, new_branch_office: val})}>
+                     <SelectTrigger className="border-slate-200/50 bg-slate-50"><SelectValue placeholder="Select Office" /></SelectTrigger>
+                     <SelectContent className="max-h-[200px]">{filterOptions?.branch_office?.filter((b: any) => b).map((b: any) => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent>
+                   </Select>
+                 </div>
+                 <div className="space-y-2">
+                   <Label className="text-xs">New Region (Optional)</Label>
+                   <Select value={revertData.new_region} onValueChange={(val) => setRevertData({...revertData, new_region: val})}>
+                     <SelectTrigger className="border-slate-200/50 bg-slate-50"><SelectValue placeholder="Select Region" /></SelectTrigger>
+                     <SelectContent className="max-h-[200px]">{filterOptions?.section_district?.filter((r: any) => r).map((r: any) => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
+                   </Select>
+                 </div>
+                 <div className="space-y-2">
+                   <Label className="text-xs">Order Number</Label>
+                   <Input className="border-slate-200/50" value={revertData.order_number} onChange={(e) => setRevertData({...revertData, order_number: e.target.value})} />
+                 </div>
+                 <div className="space-y-2">
+                   <Label className="text-xs">Order Date</Label>
+                   <Input type="date" className="border-slate-200/50" value={revertData.order_date} onChange={(e) => setRevertData({...revertData, order_date: e.target.value})} />
+                 </div>
+                 <div className="space-y-2">
+                   <Label className="text-xs">Joining Date</Label>
+                   <Input type="date" className="border-slate-200/50" value={revertData.joining_date} onChange={(e) => setRevertData({...revertData, joining_date: e.target.value})} />
+                 </div>
+               </div>
+               <div className="space-y-2">
+                 <Label className="text-xs">Remarks</Label>
+                 <Input className="border-slate-200/50" value={revertData.remarks} onChange={(e) => setRevertData({...revertData, remarks: e.target.value})} />
+               </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-4">
+              <Button variant="outline" onClick={() => setRevertingEmp(null)}>Cancel</Button>
+              <Button onClick={() => revertMutation.mutate()} disabled={revertMutation.isPending} className="bg-emerald-600 hover:bg-emerald-700 text-white">Save & Revert</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
     </div>
   );
@@ -1199,7 +1455,7 @@ function EmployeesContent() {
 
 export default function HRPoolPage() {
   return (
-    <Suspense fallback={<div>Loading HR Strategic Pool...</div>}>
+    <Suspense fallback={<div>Loading HR Pool...</div>}>
       <EmployeesContent />
     </Suspense>
   );

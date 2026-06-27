@@ -81,9 +81,89 @@ def delete_hr_pool(item_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"message": "Deleted successfully"}
 
+from pydantic import BaseModel
+
+class RevertRequest(BaseModel):
+    new_branch_office: str
+    new_post_name: str
+    new_region: str = None
+    order_number: str = None
+    order_date: str = None
+    joining_date: str = None
+    remarks: str = None
+
 @router.post("/{item_id}/revert")
-def revert_hr_pool(
+def revert_hrpool(
     item_id: int, 
+    request: RevertRequest,
+    db: Session = Depends(get_db), 
+    current_user=Depends(PermissionChecker(["employees"]))
+):
+    pool_item = db.query(models.HRPool).filter(models.HRPool.id == item_id).first()
+    if not pool_item:
+        raise HTTPException(status_code=404, detail="HR Pool record not found")
+
+    orig = pool_item.original_data
+
+    # Find Vacant seat matching new placement details
+    emp = db.query(models.Employee).filter(
+        models.Employee.post_name == request.new_post_name,
+        models.Employee.branch_office == request.new_branch_office,
+        models.Employee.name.ilike('%Vacant%')
+    ).first()
+
+    # If no vacant seat found, create a new active seat
+    if not emp:
+        emp = models.Employee()
+        db.add(emp)
+
+    # Restore original attributes (except id if creating new)
+    for key, value in orig.items():
+        if key != "id" and hasattr(emp, key):
+            setattr(emp, key, value)
+    
+    # Overwrite with new placement details
+    emp.branch_office = request.new_branch_office
+    emp.post_name = request.new_post_name
+    if request.new_region:
+        emp.section_district = request.new_region
+    if request.joining_date:
+        emp.joining_date = request.joining_date
+        emp.place_of_posting = request.joining_date
+    emp.employment_status = "Active"
+    
+    db.flush()
+
+    # Create transfer history record for this revert action
+    prev_stint = models.TransferHistory(
+        employee_id=emp.id,
+        order_number=request.order_number,
+        order_date=request.order_date,
+        previous_branch_office=orig.get("branch_office"),
+        previous_region=orig.get("section_district"),
+        new_branch_office=request.new_branch_office,
+        new_region=request.new_region,
+        joining_date=orig.get("joining_date") or orig.get("place_of_posting"),
+        relieving_date=request.joining_date,
+        duration_spent="N/A",
+        remarks=request.remarks or "Reverted from HR Pool"
+    )
+    db.add(prev_stint)
+
+    # Remove from HR Pool
+    db.delete(pool_item)
+    db.commit()
+    
+    return {"message": "Employee reverted and transferred successfully"}
+
+class SeparateRequest(BaseModel):
+    separation_type: str
+    separation_date: str = None
+
+@router.post("/{item_id}/separate")
+def separate_hrpool(
+    item_id: int,
+    request: SeparateRequest,
     db: Session = Depends(get_db),
     current_user=Depends(PermissionChecker(["employees"]))
 ):
@@ -91,38 +171,20 @@ def revert_hr_pool(
     if not pool_item:
         raise HTTPException(status_code=404, detail="HR Pool record not found")
 
-    if not pool_item.original_data:
-        raise HTTPException(status_code=400, detail="Cannot revert: original employee data is missing")
-
-    orig = pool_item.original_data
-    # 1. Try to find the exact original seat if it is still Vacant
-    emp = db.query(models.Employee).filter(
-        models.Employee.id == orig.get("id"),
-        models.Employee.name.ilike('%Vacant%')
-    ).first()
-
-    # 2. Try to find ANY Vacant seat with the same post and branch
-    if not emp:
-        emp = db.query(models.Employee).filter(
-            models.Employee.post_name == orig.get("post_name"),
-            models.Employee.branch_office == orig.get("branch_office"),
-            models.Employee.name.ilike('%Vacant%')
-        ).first()
-
-    # 3. If no vacant seat, just create a new active seat (might exceed rationalization, but ensures data isn't lost)
-    if not emp:
-        emp = models.Employee()
-        db.add(emp)
-
-    # Restore all attributes (except id if we are creating new)
-    for key, value in orig.items():
-        if key != "id" and hasattr(emp, key):
-            setattr(emp, key, value)
-    
-    emp.employment_status = "Active"
-    
-    # Remove from HR Pool
+    new_extra_entry = models.Extra(
+        s_no=pool_item.s_no,
+        name=pool_item.name,
+        post_name=pool_item.post_name,
+        bs=pool_item.bs,
+        branch_office=pool_item.branch_office,
+        domicile=pool_item.domicile,
+        joining_date=pool_item.joining_date,
+        reason=request.separation_type,
+        date_of_action=request.separation_date,
+        original_data=pool_item.original_data
+    )
+    db.add(new_extra_entry)
     db.delete(pool_item)
     db.commit()
-    
-    return {"message": "Employee reverted successfully"}
+
+    return {"message": "HR Pool employee moved to Extra successfully"}

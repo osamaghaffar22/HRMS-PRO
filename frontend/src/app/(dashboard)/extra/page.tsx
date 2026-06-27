@@ -178,7 +178,7 @@ export default function ExtraPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-3">
                 <label className="text-xs font-black text-[#405189] uppercase tracking-wide">Separation Reason</label>
-                <Select value={separationType} onValueChange={setSeparationType}>
+                <Select value={separationType} onValueChange={(val: string | null) => val && setSeparationType(val)}>
                   <SelectTrigger className="border-slate-200/50 w-full h-10 bg-slate-50">
                     <SelectValue placeholder="Select Reason..." />
                   </SelectTrigger>

@@ -33,7 +33,7 @@ import { useQuery } from '@tanstack/react-query';
 const navItems = [
   { label: 'Dashboard', icon: LayoutDashboard, href: '/' },
   { label: 'Employees', icon: Users, href: '/employees' },
-  { label: 'HR Strategic Pool', icon: ShieldAlert, href: '/hr-pool' },
+  { label: 'HR Pool', icon: ShieldAlert, href: '/hr-pool' },
   { label: 'Transfer Posting', icon: ArrowLeftRight, href: '/transfers' },
   { label: 'ACR Management', icon: FileText, href: '/acr' },
   { label: 'Rationalization', icon: Scale, href: '/rationalization' },
@@ -237,7 +237,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="flex flex-col" style={{ fontFamily: 'Arial, sans-serif' }}>
             <h1 className="text-3xl font-bold tracking-tight text-white leading-none">
                {pathname === '/employees' ? 'Employees' : 
-                pathname === '/hr-pool' ? 'HR Strategic Pool' : 
+                pathname === '/hr-pool' ? 'HR Pool' : 
                 pathname === '/transfers' ? 'Transfers' :
                 pathname === '/acr' ? 'ACR Management' :
                 pathname === '/rationalization' ? 'Rationalization' :

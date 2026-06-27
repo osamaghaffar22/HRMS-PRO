@@ -73,11 +73,11 @@ export function MultiSelect({ options = [], selected = [], onChange, placeholder
           <Badge
             key={val}
             variant="secondary"
-            className="text-[10px] h-6 px-2 bg-primary/10 text-primary border-none font-bold hover:bg-primary/20 flex items-center gap-1 rounded-md"
+            className="text-[10px] min-h-6 h-auto py-1 px-2 bg-primary/10 text-primary border-none font-bold hover:bg-primary/20 flex items-center justify-between gap-1 rounded-md max-w-full"
           >
-            {val}
+            <span className="whitespace-normal break-words text-left leading-tight">{val}</span>
             <div
-              className="h-4 w-4 flex items-center justify-center rounded-sm hover:bg-primary/20 cursor-pointer ml-1 -mr-1"
+              className="h-4 w-4 shrink-0 flex items-center justify-center rounded-sm hover:bg-primary/20 cursor-pointer ml-1 -mr-1"
               onMouseDown={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -110,7 +110,7 @@ export function MultiSelect({ options = [], selected = [], onChange, placeholder
 
       <div className="relative w-full z-[100]">
         {open ? (
-          <div className="absolute top-2 z-[100] min-w-full w-max max-w-[90vw] rounded-xl border border-slate-200 bg-white text-slate-900 shadow-xl outline-none animate-in fade-in-0 zoom-in-95">
+          <div className="absolute top-2 z-[100] w-full rounded-xl border border-slate-200 bg-white text-slate-900 shadow-xl outline-none animate-in fade-in-0 zoom-in-95">
             <CommandList className="max-h-[300px] overflow-auto custom-scrollbar p-1">
               <CommandEmpty className="py-4 px-4 text-xs text-slate-500 font-bold text-center">No results found.</CommandEmpty>
               <CommandGroup>
@@ -128,15 +128,15 @@ export function MultiSelect({ options = [], selected = [], onChange, placeholder
                       setOpen(false);
                       inputRef.current?.blur();
                     }}
-                    className="text-xs font-bold py-2.5 px-3 cursor-pointer flex items-center rounded-lg data-[selected=true]:bg-slate-100/80 data-[selected=true]:text-slate-900 whitespace-nowrap"
+                    className="text-xs font-bold py-2.5 px-3 cursor-pointer flex items-start rounded-lg data-[selected=true]:bg-slate-100/80 data-[selected=true]:text-slate-900 whitespace-normal break-words leading-tight"
                   >
                     <div className={cn(
-                      "mr-3 flex h-[14px] w-[14px] items-center justify-center rounded-[4px] border-2 transition-colors",
+                      "mr-3 mt-0.5 shrink-0 flex h-[14px] w-[14px] items-center justify-center rounded-[4px] border-2 transition-colors",
                       (selected || []).includes(option) ? "bg-primary border-primary text-white" : "border-slate-300"
                     )}>
                       {(selected || []).includes(option) && <Check className="h-2.5 w-2.5 stroke-[3]" />}
                     </div>
-                    {option}
+                    <span className="flex-1 text-left">{option}</span>
                   </CommandItem>
                 ))}
               </CommandGroup>

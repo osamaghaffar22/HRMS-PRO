@@ -39,6 +39,9 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     username: Optional[str] = None
 
+from datetime import date
+import re
+
 # --- Employee ---
 class EmployeeBase(BaseModel):
     personal_file_no: Optional[str] = None
@@ -51,7 +54,7 @@ class EmployeeBase(BaseModel):
     seniority_no: Optional[str] = None
     name: Optional[str] = None
     father_name: Optional[str] = None
-    dob: Optional[str] = None
+    dob: Optional[date] = None
     total_age: Optional[str] = None
     youth_adult: Optional[str] = None
     religion: Optional[str] = None
@@ -63,20 +66,20 @@ class EmployeeBase(BaseModel):
     domicile: Optional[str] = None
     rural_urban: Optional[str] = None
     entry_govt: Optional[str] = None
-    joining_date: Optional[str] = None
+    joining_date: Optional[date] = None
     total_service: Optional[str] = None
-    place_of_posting: Optional[str] = None
+    place_of_posting: Optional[date] = None
     tenure_current_station: Optional[str] = None
     head_office: Optional[str] = None
     wing_division: Optional[str] = None
     section_district: Optional[str] = None
     branch_office: Optional[str] = None
-    bs: Optional[str] = None
+    bs: Optional[int] = None
     post_name: Optional[str] = None
     cadre_type: Optional[str] = None
     job_type: Optional[str] = None
     direct_promotion: Optional[str] = None
-    joining_present_post: Optional[str] = None
+    joining_present_post: Optional[date] = None
     tenure_current_scale: Optional[str] = None
     qualification: Optional[str] = None
     disability: Optional[str] = None
@@ -87,7 +90,7 @@ class EmployeeBase(BaseModel):
     email: Optional[str] = None
     mobile_no: Optional[str] = None
     probation_status: Optional[str] = None
-    probation_till_date: Optional[str] = None
+    probation_till_date: Optional[date] = None
     temp_address: Optional[str] = None
     perm_address: Optional[str] = None
     post_status: Optional[str] = None
@@ -95,14 +98,58 @@ class EmployeeBase(BaseModel):
     order_date: Optional[str] = None
     relieving_date: Optional[str] = None
     employment_status: Optional[str] = "Active"
-    separation_date: Optional[str] = None
+    separation_date: Optional[date] = None
+
+    @field_validator('dob', 'joining_date', 'place_of_posting', 'joining_present_post', 'probation_till_date', 'separation_date', mode='before')
+    @classmethod
+    def parse_dates(cls, v):
+        if not v or str(v).strip() == "" or "not match" in str(v).lower() or "n/a" in str(v).lower():
+            return None
+        return v
+        
+    @field_validator('bs', mode='before')
+    @classmethod
+    def parse_bs_val(cls, v):
+        if not v or str(v).strip() == "":
+            return None
+        digits = re.sub(r'\D', '', str(v))
+        return int(digits) if digits else None
 
 class EmployeeCreate(EmployeeBase):
     pass
 
+from pydantic import model_validator
+
 class Employee(EmployeeBase):
     id: int
     model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode='after')
+    def compute_durations(self):
+        from datetime import date
+        today = date.today()
+        
+        def calculate_duration(start_date):
+            if not start_date: return "---"
+            try:
+                years = today.year - start_date.year
+                months = today.month - start_date.month
+                days = today.day - start_date.day
+                if days < 0:
+                    months -= 1
+                    days += 30
+                if months < 0:
+                    years -= 1
+                    months += 12
+                return f"{years}Y, {months}M, {days}D"
+            except:
+                return "---"
+
+        if self.dob: self.total_age = calculate_duration(self.dob)
+        if self.joining_date: self.total_service = calculate_duration(self.joining_date)
+        if self.place_of_posting: self.tenure_current_station = calculate_duration(self.place_of_posting)
+        
+        return self
 
 class EmployeeDiscrepancy(BaseModel):
     employee: Employee

@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Search, Plus, Trash2, FileDown, FileJson, Printer, ArrowUpDown, ArrowUp, ArrowDown, Save, User, Briefcase, MapPin, Contact, FileText, ChevronRight, ArrowLeftRight, CalendarDays, Clock, History, Edit2 } from 'lucide-react';
+import { Search, Plus, Trash2, FileDown, FileJson, Printer, ArrowUpDown, ArrowUp, ArrowDown, Save, User, Briefcase, MapPin, Contact, FileText, ChevronRight, ArrowLeftRight, CalendarDays, Clock, History, Edit2, UserPlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MultiSelect } from '@/components/ui/multi-select';
 import {
@@ -519,14 +519,20 @@ function EmployeesContent() {
   const canEdit = user?.role === 'Admin' || user?.permissions?.employees_form === true;
   const searchParams = useSearchParams();
   const router = useRouter();
+  const [isMounted, setIsMounted] = useState(false);
+  
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
   const highlightId = searchParams.get('highlight');
   const editId = searchParams.get('editId');
+  const exactId = searchParams.get('exact_id');
 
   const [editingEmp, setEditingEmp] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("personal");
   const [visibleCount, setVisibleCount] = useState(100);
   const [page, setPage] = useState(1);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(searchParams?.get('search') || '');
 
   const [filters, setFilters] = useState<any>({
     officer_official: [],
@@ -548,6 +554,7 @@ function EmployeesContent() {
       if (key === 'search') {
         if (search !== value) {
           setSearch(value);
+          setDebouncedSearch(value); // Instantly update debounced search to prevent jerk
         }
       } else if (newFilters[key] !== undefined) {
         const arr = value.split(',');
@@ -593,7 +600,7 @@ function EmployeesContent() {
     );
   };
 
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState(searchParams?.get('search') || '');
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(timer);
@@ -604,9 +611,10 @@ function EmployeesContent() {
   }, [debouncedSearch, filters]);
 
   const { data: employeesData, isLoading } = useQuery({
-    queryKey: ['employees', filters, debouncedSearch, visibleCount],
+    queryKey: ['employees', filters, debouncedSearch, visibleCount, exactId],
     queryFn: async () => {
       const params = new URLSearchParams();
+      if (exactId) params.append('employee_id', exactId);
       if (debouncedSearch) params.append('search', debouncedSearch);
       Object.keys(filters).forEach(key => {
         if (filters[key].length > 0) params.append(key, filters[key].join(','));
@@ -642,6 +650,15 @@ function EmployeesContent() {
       }
     }
   }, [editId, employees, editingEmp, router]);
+
+  const createEmpMutation = useMutation({
+    mutationFn: (data: any) => api.post(`/api/employees/`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      setEditingEmp(null);
+      alert("Employee registered successfully.");
+    }
+  });
 
   const updateEmpMutation = useMutation({
     mutationFn: (data: { id: number; data: any }) => api.put(`/api/employees/${data.id}`, data.data),
@@ -787,7 +804,51 @@ function EmployeesContent() {
   }, [employees, sort]);
 
   const [isExporting, setIsExporting] = useState(false);
-  const handleExport = async (type: 'excel' | 'pdf') => {
+
+  const generateDynamicTitle = () => {
+      let subject = "Employees";
+      
+      const isVacant = filters.post_status?.includes('Vacant') && filters.post_status?.length === 1;
+      const isFilled = filters.post_status?.includes('Filled') && filters.post_status?.length === 1;
+      
+      if (isVacant) subject = "Vacant Seats";
+      else if (isFilled) subject = "Filled Posts";
+
+      if (filters.officer_official?.length > 0) {
+          subject = `${filters.officer_official.join(' / ')} ${subject === "Employees" ? "Records" : subject}`;
+      }
+
+      let parts = [];
+
+      if (filters.post_name?.length > 0) {
+          parts.push(`for ${filters.post_name.join(', ')}`);
+      }
+
+      let loc = [];
+      if (filters.branch_office?.length > 0) loc.push(filters.branch_office.join(', '));
+      if (filters.hq_field?.length > 0) loc.push(filters.hq_field.join(', '));
+      if (filters.region?.length > 0) loc.push(filters.region.join(', '));
+      
+      if (loc.length > 0) {
+          parts.push(`in ${loc.join(' - ')}`);
+      }
+
+      if (filters.domicile?.length > 0) {
+          parts.push(`(Domicile: ${filters.domicile.join(', ')})`);
+      }
+
+      if (debouncedSearch) {
+          parts.push(`matching "${debouncedSearch}"`);
+      }
+
+      if (parts.length === 0 && subject === "Employees") {
+          return "Personnel Registry Report";
+      }
+
+      return `List of ${subject} ${parts.join(' ')}`.trim();
+  };
+
+  const handleExport = async (type: 'excel' | 'pdf' | 'print') => {
     try {
         setIsExporting(true);
         const params = new URLSearchParams();
@@ -796,18 +857,22 @@ function EmployeesContent() {
             if (filters[key].length > 0) params.append(key, filters[key].join(','));
         });
 
+        const dynamicTitle = generateDynamicTitle();
         if (type === 'excel') {
+            params.append('title', dynamicTitle);
             const url = `${api.defaults.baseURL}/api/employees/export/excel?${params.toString()}`;
             window.open(url, '_blank');
         } else {
             // PDF Export
             params.append('limit', '10000');
             const res = await api.get(`/api/employees?${params.toString()}`);
-            const fullData = res.data?.items || [];
+            const fullData = Array.isArray(res.data) ? res.data : (res.data?.items || []);
             
             if (!fullData.length) return;
             const doc = new jsPDF('landscape');
-            doc.text("Personnel Registry Report", 14, 15);
+            
+            const dynamicTitle = generateDynamicTitle();
+            doc.text(dynamicTitle, 14, 15);
             autoTable(doc, {
                 startY: 20,
                 head: [['#', 'Name', 'Designation', 'BPS', 'Office/Branch', 'Domicile', 'Appt. Date', 'Station DOJ', 'Duration']],
@@ -820,10 +885,24 @@ function EmployeesContent() {
                     e.domicile || '', 
                     formatDisplayDate(e.joining_date), 
                     formatDisplayDate(e.place_of_posting),
-                    calculateDuration(e.place_of_posting)
+                    e.tenure_current_station || "---"
                 ]),
+                theme: 'grid',
+                headStyles: { halign: 'center', valign: 'middle', fillColor: [64, 81, 137], textColor: [255, 255, 255], fontStyle: 'bold' },
+                bodyStyles: { halign: 'center', valign: 'middle', fillColor: [255, 255, 255], textColor: [0, 0, 0] },
+                alternateRowStyles: { fillColor: [255, 255, 255] },
+                columnStyles: {
+                    1: { halign: 'left' } // Name column index is 1
+                }
             });
-            doc.save(`Employees_Export_${new Date().getTime()}.pdf`);
+            if (type === 'pdf') {
+                doc.save(`Employees_Export_${new Date().getTime()}.pdf`);
+            } else {
+                // Print directly using the PDF output
+                doc.autoPrint();
+                const blob = doc.output('blob');
+                window.open(URL.createObjectURL(blob), '_blank');
+            }
         }
     } catch (error) {
         console.error("Export failed:", error);
@@ -859,38 +938,7 @@ function EmployeesContent() {
     return dateStr;
   };
 
-  const calculateDuration = (startDateStr: string) => {
-    if (!startDateStr || startDateStr.toLowerCase().includes('not match')) return "---";
-    try {
-      let parsedDateStr = startDateStr;
-      // Convert DD-MM-YYYY to YYYY-MM-DD for reliable parsing
-      if (/^\d{1,2}[-/]\d{1,2}[-/]\d{4}$/.test(startDateStr)) {
-        const parts = startDateStr.split(/[-/]/);
-        parsedDateStr = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-      }
 
-      const start = new Date(parsedDateStr);
-      if (isNaN(start.getTime())) return "---";
-      
-      const end = new Date();
-      let years = end.getFullYear() - start.getFullYear();
-      let months = end.getMonth() - start.getMonth();
-      let days = end.getDate() - start.getDate();
-
-      if (days < 0) {
-        months--;
-        const prevMonth = new Date(end.getFullYear(), end.getMonth(), 0);
-        days += prevMonth.getDate();
-      }
-      if (months < 0) {
-        years--;
-        months += 12;
-      }
-      return `${years}Y, ${months}M, ${days}D`;
-    } catch (e) {
-      return "---";
-    }
-  };
 
   const parseDateToYYYYMMDD = (dateStr: string) => {
     if (!dateStr || dateStr.toLowerCase().includes('not match')) return '';
@@ -901,7 +949,7 @@ function EmployeesContent() {
     if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
     return ''; 
   };  const renderField = (field: { key: string, label: string, readOnly?: boolean, type?: string }) => {
-    const rawVal = editingEmp[field.key] || '';
+    const rawVal = editingEmp[field.key] != null ? String(editingEmp[field.key]) : '';
     const isFieldReadOnly = field.readOnly || !canEdit;
     
     if (field.type === 'date') {
@@ -1053,15 +1101,38 @@ function EmployeesContent() {
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">Records</span>
         </div>
         <div className="flex items-center gap-2 bg-white p-1 rounded-xl shadow-sm border border-slate-100 h-12 px-2">
+            {canEdit && (
+                <Button 
+                   variant="default" 
+                   size="sm" 
+                   className="h-9 px-4 text-[11px] font-black uppercase rounded-lg flex items-center gap-2 bg-primary hover:bg-primary/90 transition-all shadow-sm" 
+                   onClick={() => {
+                       setEditingEmp({
+                          name: '', father_name: '', cnic: '', dob: '', bs: '', 
+                          post_name: '', branch_office: '', post_status: 'Filled', employment_status: 'Active',
+                          hq_field: 'HQ', officer_official: 'Official', joining_date: ''
+                       });
+                   }}
+                >
+                   <UserPlus className="h-4 w-4" /> Register Employee
+                </Button>
+            )}
+            <div className="w-[1px] h-6 bg-slate-100" />
             <Button variant="ghost" size="sm" className="h-9 px-4 text-[11px] font-black text-slate-600 uppercase rounded-lg flex items-center gap-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all" onClick={() => handleExport('excel')}><FileDown className="h-4 w-4 text-emerald-600" /> Excel</Button>
             <div className="w-[1px] h-6 bg-slate-100" />
             <Button variant="ghost" size="sm" className="h-9 px-4 text-[11px] font-black text-slate-600 uppercase rounded-lg flex items-center gap-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all" onClick={() => handleExport('pdf')}><FileJson className="h-4 w-4 text-rose-600" /> PDF</Button>
             <div className="w-[1px] h-6 bg-slate-100" />
-            <Button variant="ghost" size="sm" className="h-9 px-4 text-[11px] font-black text-slate-600 uppercase rounded-lg flex items-center gap-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all" onClick={() => window.print()}><Printer className="h-4 w-4 text-blue-600" /> Print</Button>
+            <Button variant="ghost" size="sm" className="h-9 px-4 text-[11px] font-black text-slate-600 uppercase rounded-lg flex items-center gap-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all" onClick={() => handleExport('print')}><Printer className="h-4 w-4 text-blue-600" /> Print</Button>
         </div>
       </div>
 
-      <Card className="border-none shadow-2xl overflow-hidden bg-white rounded-3xl border border-slate-100">
+      <Card className="border-none shadow-2xl overflow-hidden bg-white rounded-3xl border border-slate-100 min-h-[500px] print-area print:!shadow-none print:!border-none print:!rounded-none">
+        <div className="hidden print:block print-header w-full">
+           <h1>{generateDynamicTitle()}</h1>
+           <p>Total Records: {totalCount}</p>
+        </div>
+        {isMounted ? (
+          <>
         <Table className="table-fixed w-full">
           <TableHeader className="bg-[#405189]">
             <TableRow className="border-none hover:bg-white/5 h-14">
@@ -1117,7 +1188,7 @@ function EmployeesContent() {
                   <TableCell className="p-2 text-[12px] font-bold text-slate-500 text-center uppercase tabular-nums leading-tight">{formatDisplayDate(e.place_of_posting)}</TableCell>
                   <TableCell className="p-2 text-center">
                     <span className="text-[12px] font-black text-primary uppercase bg-primary/5 px-1.5 py-0.5 rounded whitespace-nowrap">
-                      {calculateDuration(e.place_of_posting)}
+                      {e.tenure_current_station || "---"}
                     </span>
                   </TableCell>
                   <TableCell className="text-center p-2">
@@ -1146,6 +1217,12 @@ function EmployeesContent() {
         <div className="text-center pb-4 text-xs font-bold text-slate-400">
           Showing {Math.min(visibleCount, totalCount)} of {totalCount} records
         </div>
+        </>
+        ) : (
+          <div className="flex items-center justify-center h-full min-h-[500px]">
+            <Skeleton className="w-full h-full opacity-20" />
+          </div>
+        )}
       </Card>
 
       <Dialog open={!!editingEmp} onOpenChange={(open) => !open && setEditingEmp(null)}>
@@ -1168,10 +1245,16 @@ function EmployeesContent() {
                   <Button variant="outline" className="h-10 px-4 rounded-md font-medium text-sm border-slate-300 hover:bg-slate-50" onClick={() => setEditingEmp(null)}>Discard</Button>
                   <Button
                     className="h-10 px-6 rounded-md font-medium text-sm bg-primary hover:bg-primary/90 text-white shadow-sm transition-all"
-                    onClick={() => updateEmpMutation.mutate({ id: editingEmp.id, data: editingEmp })}
-                    disabled={updateEmpMutation.isPending}
+                    onClick={() => {
+                      if (editingEmp.id) {
+                        updateEmpMutation.mutate({ id: editingEmp.id, data: editingEmp });
+                      } else {
+                        createEmpMutation.mutate(editingEmp);
+                      }
+                    }}
+                    disabled={updateEmpMutation.isPending || createEmpMutation.isPending}
                   >
-                    {updateEmpMutation.isPending ? 'Syncing...' : <><Save className="h-4 w-4 mr-2" /> Commit Changes</>}
+                    {(updateEmpMutation.isPending || createEmpMutation.isPending) ? 'Syncing...' : <><Save className="h-4 w-4 mr-2" /> Commit Changes</>}
                   </Button>
                 </>
               )}

@@ -177,15 +177,22 @@ export default function ReportsPage() {
     });
   }, [reportData, selectedCols, filters, categoryFilter, locationFilter]);
 
-  const handlePrint = () => window.print();
+  const generateDynamicTitle = () => {
+      let subject = "Custom Personnel Report";
+      let parts = [];
+      if (categoryFilter !== 'All') parts.push(`Class: ${categoryFilter}`);
+      if (locationFilter !== 'All') parts.push(`Loc: ${locationFilter}`);
+      return `${subject} ${parts.join(' - ')}`.trim();
+  };
 
-  const handleExport = (type: 'excel' | 'pdf') => {
+  const handleExport = async (type: 'excel' | 'pdf' | 'print') => {
     if (!filteredData.length || !selectedCols.length) {
       alert("No data or columns selected to export!");
       return;
     }
     
     const activeColumns = availableColumns.filter(c => selectedCols.includes(c.id));
+    const dynamicTitle = generateDynamicTitle();
     
     if (type === 'excel') {
         const wsData = filteredData.map((emp: any, index: number) => {
@@ -195,13 +202,22 @@ export default function ReportsPage() {
             });
             return row;
         });
-        const ws = XLSX.utils.json_to_sheet(wsData);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Custom Report");
-        XLSX.writeFile(wb, `Custom_Report_${new Date().getTime()}.xlsx`);
+        try {
+            const response = await api.post('/api/export/excel-generic', { title: dynamicTitle, data: wsData }, { responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `Custom_Report_${new Date().getTime()}.xlsx`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (error) {
+            console.error("Export failed", error);
+            alert("Export failed.");
+        }
     } else {
-        const doc = new jsPDF('landscape');
-        doc.text("Custom Personnel Report", 14, 15);
+        const doc = new jsPDF('landscape', 'pt', 'a4');
+        doc.text(dynamicTitle, 40, 40);
         
         const head = [['#', ...activeColumns.map(c => c.label)]];
         const body = filteredData.map((emp: any, index: number) => [
@@ -210,13 +226,23 @@ export default function ReportsPage() {
         ]);
 
         autoTable(doc, {
-            startY: 20,
+            startY: 60,
             head: head,
             body: body,
-            styles: { fontSize: 8 },
-            headStyles: { fillColor: [15, 23, 42] }
+            theme: 'grid',
+            headStyles: { halign: 'center', valign: 'middle', fillColor: [64, 81, 137], textColor: [255, 255, 255], fontStyle: 'bold' },
+            bodyStyles: { halign: 'center', valign: 'middle', fillColor: [255, 255, 255], textColor: [0, 0, 0] },
+            alternateRowStyles: { fillColor: [255, 255, 255] },
+            styles: { fontSize: 7 }
         });
-        doc.save(`Custom_Report_${new Date().getTime()}.pdf`);
+        
+        if (type === 'pdf') {
+            doc.save(`Custom_Report_${new Date().getTime()}.pdf`);
+        } else {
+            doc.autoPrint();
+            const blob = doc.output('blob');
+            window.open(URL.createObjectURL(blob), '_blank');
+        }
     }
   };
 
@@ -228,7 +254,7 @@ export default function ReportsPage() {
           <p className="text-slate-500 font-bold text-xs uppercase tracking-widest mt-1 opacity-70">Custom Data Generation & Export</p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline" className="font-black text-[10px] uppercase shadow-sm border-slate-200" onClick={handlePrint}>
+          <Button variant="outline" className="font-black text-[10px] uppercase shadow-sm border-slate-200" onClick={() => handleExport('print')}>
             <Printer className="h-3 w-3 mr-2 text-slate-400" /> Print
           </Button>
           <Button variant="outline" className="font-black text-[10px] uppercase shadow-sm border-emerald-100 text-emerald-600 hover:bg-emerald-50" onClick={() => handleExport('excel')}>

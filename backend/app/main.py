@@ -42,6 +42,77 @@ app.include_router(routes_rationalization.router)
 app.include_router(routes_hrpool.router)
 app.include_router(routes_extra.router)
 
+from pydantic import BaseModel
+from typing import Dict, Any
+import pandas as pd
+import io
+from fastapi.responses import StreamingResponse
+
+class ExportPayload(BaseModel):
+    title: str
+    data: List[Dict[str, Any]]
+
+@app.post("/api/export/excel-generic")
+def export_excel_generic(payload: ExportPayload):
+    df = pd.DataFrame(payload.data)
+    stream = io.BytesIO()
+    
+    with pd.ExcelWriter(stream, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False, sheet_name='Export', startrow=1)
+        workbook  = writer.book
+        worksheet = writer.sheets['Export']
+        
+        title_format = workbook.add_format({
+            'bold': True, 'font_size': 14, 'align': 'center', 'valign': 'vcenter', 'border': 0
+        })
+        header_format = workbook.add_format({
+            'bold': True, 'align': 'center', 'valign': 'vcenter',
+            'fg_color': '#405189', 'font_color': 'white', 'border': 1
+        })
+        center_format = workbook.add_format({'align': 'center', 'valign': 'vcenter', 'border': 1})
+        left_format = workbook.add_format({'align': 'left', 'valign': 'vcenter', 'border': 1})
+        
+        if not df.empty and len(df.columns) > 0:
+            worksheet.merge_range(0, 0, 0, len(df.columns) - 1, payload.title, title_format)
+        worksheet.set_row(0, 30)
+        
+        for col_num, value in enumerate(df.columns.values):
+            worksheet.write(1, col_num, value, header_format)
+            
+        for col_num, col_name in enumerate(df.columns.values):
+            col_str = str(col_name)
+            max_len = max(
+                df[col_name].astype(str).map(len).max() if not df[col_name].empty else 0,
+                len(col_str)
+            ) + 2
+            
+            width = max(max_len, 10)
+            if 'Name' in col_str: width = max(width, 25)
+            if 'Designation' in col_str or 'Office' in col_str or 'Branch' in col_str: width = max(width, 20)
+            
+            worksheet.set_column(col_num, col_num, width)
+            
+            for row_num in range(len(df)):
+                val = df.iloc[row_num, col_num]
+                fmt = left_format if 'Name' in col_str else center_format
+                worksheet.write(row_num + 2, col_num, val if pd.notnull(val) else '', fmt)
+
+        if len(df.columns) > 5:
+            worksheet.set_landscape()
+        else:
+            worksheet.set_portrait()
+            
+        worksheet.fit_to_pages(1, 0)
+        worksheet.set_margins(left=0.2, right=0.2, top=0.3, bottom=0.2)
+        worksheet.center_horizontally()
+
+    stream.seek(0)
+    headers = {
+        'Content-Disposition': 'attachment; filename="export.xlsx"',
+        'Access-Control-Expose-Headers': 'Content-Disposition'
+    }
+    return StreamingResponse(stream, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers=headers)
+
 @app.get("/admin/test")
 async def admin_only_endpoint(current_user: models.User = Depends(RoleChecker(["Admin"]))):
     return {"message": "You are an admin"}
@@ -81,7 +152,7 @@ def get_overall_stats(db: Session = Depends(get_db), current_user: models.User =
 
     # Officer/Official Rules
     is_officer = (
-        (cast(func.regexp_replace(models.Employee.bs, '[^0-9]', '', 'g'), Integer) >= 17) |
+        (models.Employee.bs >= 17) |
         func.coalesce(models.Employee.post_name, '').ilike('%Senior Personal Assistant%') |
         func.coalesce(models.Employee.post_name, '').ilike('%Deputy Assistant Director%')
     )

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON, Boolean, Text, Index
+from sqlalchemy import Column, Integer, String, DateTime, Date, ForeignKey, JSON, Boolean, Text, Index
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, backref
 from datetime import datetime
@@ -35,7 +35,7 @@ class Employee(Base):
     seniority_no = Column(String)
     name = Column(String, index=True)
     father_name = Column(String, index=True)
-    dob = Column(String)
+    dob = Column(Date)
     total_age = Column(String)
     youth_adult = Column(String)
     religion = Column(String)
@@ -47,20 +47,20 @@ class Employee(Base):
     domicile = Column(String)
     rural_urban = Column(String)
     entry_govt = Column(String)
-    joining_date = Column(String)
+    joining_date = Column(Date)
     total_service = Column(String)
-    place_of_posting = Column(String)  # This stores the 'Joining Current Station' date
+    place_of_posting = Column(Date)  # This stores the 'Joining Current Station' date
     tenure_current_station = Column(String)
     head_office = Column(String)
     wing_division = Column(String)
     section_district = Column(String)
     branch_office = Column(String, index=True)
-    bs = Column(String, index=True)
+    bs = Column(Integer, index=True)
     post_name = Column(String, index=True)
     cadre_type = Column(String)
     job_type = Column(String)
     direct_promotion = Column(String)
-    joining_present_post = Column(String)
+    joining_present_post = Column(Date)
     tenure_current_scale = Column(String)
     qualification = Column(String)
     disability = Column(String)
@@ -71,12 +71,12 @@ class Employee(Base):
     email = Column(String)
     mobile_no = Column(String)
     probation_status = Column(String)
-    probation_till_date = Column(String)
+    probation_till_date = Column(Date)
     temp_address = Column(Text)
     perm_address = Column(Text)
     post_status = Column(String, index=True)
     employment_status = Column(String, default="Active", index=True)
-    separation_date = Column(String, default=None)
+    separation_date = Column(Date, default=None)
     reports = relationship("ACRReport", backref="employee", cascade="all, delete-orphan")
 
     __table_args__ = (
@@ -152,11 +152,15 @@ class ACRReportPeriod(Base):
     status = Column(String)  # Pending, Sent
     ga = Column(String, default="")
     promotion = Column(String, default="")
-    remarks = Column(String, default="")
+    ro_remarks = Column(String, default="")
     fitness_after_25_years = Column(String, default="")
     ro_name = Column(String, default="")
     ro_date = Column(String, default="")
     co_name = Column(String, default="")
+    co_date = Column(String, default="")
+    co_remarks = Column(String, default="")
+    result = Column(String, default="")
+
 class FileTracking(Base):
     __tablename__ = "file_tracking"
     id = Column(Integer, primary_key=True)

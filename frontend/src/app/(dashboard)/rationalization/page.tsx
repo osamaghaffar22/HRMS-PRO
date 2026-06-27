@@ -83,7 +83,7 @@ export default function RationalizationPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rationalization-status'] });
       setShowDialog(false);
-      setFormData({ wing_division: '', region: '', branch_office: '', post_name: '', allocated_posts: 0 });
+      setFormData({ wing_division: '', region: '', branch_office: '', post_allocations: {} });
     },
     onError: (err: any) => alert(err.response?.data?.detail || "Error creating quota")
   });

@@ -34,8 +34,8 @@ def get_acr_records(
     if emp_id:
         query = query.filter(models.Employee.id == emp_id)
     
-    # BPS parsing for logic
-    bps_val = cast(func.regexp_replace(models.Employee.bs, '[^0-9]', '', 'g'), Integer)
+    # BPS parsing for logic (bs is now Integer)
+    bps_val = func.coalesce(models.Employee.bs, 0)
     
     # Base logic for Officer (ACR perspective: SPA is Official)
     is_officer_acr = (
@@ -102,7 +102,8 @@ def get_acr_records(
                         "status": p.status, 
                         "ga": p.ga, 
                         "promotion": p.promotion, 
-                        "remarks": p.remarks, 
+                        "ro_remarks": p.ro_remarks, 
+                        "co_remarks": p.co_remarks, 
                         "fitness_after_25_years": p.fitness_after_25_years,
                         "ro_name": p.ro_name,
                         "ro_date": p.ro_date,
@@ -145,7 +146,7 @@ def delete_acr_period(period_id: int, db: Session = Depends(get_db)):
 def update_acr_period_status(period_id: int, data: dict, db: Session = Depends(get_db)):
     period = db.query(models.ACRReportPeriod).filter(models.ACRReportPeriod.id == period_id).first()
     if period:
-        fields = ['status', 'ga', 'promotion', 'remarks', 'fitness_after_25_years', 'ro_name', 'ro_date', 'co_name', 'co_date', 'result']
+        fields = ['status', 'ga', 'promotion', 'ro_remarks', 'co_remarks', 'fitness_after_25_years', 'ro_name', 'ro_date', 'co_name', 'co_date', 'result']
         for field in fields:
             if field in data:
                 setattr(period, field, data[field])
@@ -158,7 +159,9 @@ def save_acr_report(
     db: Session = Depends(get_db)
 ):
     data = report_data.get('report_data', report_data)
-    report = models.ACRReport(**data)
+    valid_keys = [column.name for column in models.ACRReport.__table__.columns]
+    filtered_data = {k: v for k, v in data.items() if k in valid_keys}
+    report = models.ACRReport(**filtered_data)
     db.add(report)
     db.commit()
     db.refresh(report)
@@ -222,10 +225,10 @@ def save_acr_period(
             )
             
         # Remove fields not present in model
-        if 'year' in data:
-            data.pop('year')
+        valid_keys = [column.name for column in models.ACRReportPeriod.__table__.columns]
+        filtered_data = {k: v for k, v in data.items() if k in valid_keys}
 
-        period = models.ACRReportPeriod(**data)
+        period = models.ACRReportPeriod(**filtered_data)
         db.add(period)
         db.commit()
         db.refresh(period)

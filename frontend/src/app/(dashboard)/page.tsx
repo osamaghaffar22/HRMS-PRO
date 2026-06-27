@@ -135,7 +135,7 @@ export default function DashboardPage() {
         <StatCard title="Field Officers" data={stats?.field_officers} filters={{ total: 'hq_field=Field&officer_official=Officer', filled: 'hq_field=Field&officer_official=Officer&post_status=Filled', vacant: 'hq_field=Field&officer_official=Officer&post_status=Vacant' }} statsLoading={statsLoading} />
         <StatCard title="HQ Officials" data={stats?.hq_officials} filters={{ total: 'hq_field=HQ&officer_official=Official', filled: 'hq_field=HQ&officer_official=Official&post_status=Filled', vacant: 'hq_field=HQ&officer_official=Official&post_status=Vacant' }} statsLoading={statsLoading} />
         <StatCard title="Field Officials" data={stats?.field_officials} filters={{ total: 'hq_field=Field&officer_official=Official', filled: 'hq_field=Field&officer_official=Official&post_status=Filled', vacant: 'hq_field=Field&officer_official=Official&post_status=Vacant' }} statsLoading={statsLoading} />
-        <StatCard title="HR Strategic Pool" data={stats?.hr_pool} filters={{ basePath: '/hr-pool', total: '', filled: 'post_status=Filled', vacant: 'post_status=Vacant' }} statsLoading={statsLoading} />
+        <StatCard title="HR Pool" data={stats?.hr_pool} filters={{ basePath: '/hr-pool', total: '', filled: 'post_status=Filled', vacant: 'post_status=Vacant' }} statsLoading={statsLoading} />
       </motion.div>
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 px-2 items-start mt-6">
@@ -248,7 +248,7 @@ export default function DashboardPage() {
                               </Badge>
                            </TableCell>
                            <TableCell className="p-2 text-right pr-4">
-                              <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-300 hover:text-blue-800 hover:bg-blue-50 transition-all" onClick={() => router.push(`/employees?search=${emp.name}`)}>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-300 hover:text-blue-800 hover:bg-blue-50 transition-all" onClick={() => router.push(`/employees?exact_id=${emp.id}&search=${encodeURIComponent((emp.name || '').trim())}`)}>
                                  <ChevronRight className="h-3.5 w-3.5" />
                               </Button>
                            </TableCell>

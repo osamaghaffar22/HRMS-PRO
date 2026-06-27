@@ -269,53 +269,70 @@ export default function FileTrackingPage() {
     return dateStr;
   };
 
-  const handleExportExcel = () => {
-    if (!filteredFiles || filteredFiles.length === 0) return;
-    const rows = filteredFiles.map((f: any, i: number) => ({
-      'S.No': i + 1,
-      'File Name': f.file_name || '—',
-      'Case / Subject': f.case_subject || '—',
-      'Reason / Case': f.reason || '—',
-      'Put Up By': f.put_up || '—',
-      'Put Up Date': formatDate(f.put_up_date),
-      'Mark Branch': f.mark_branch || '—',
-      'Receiver Name': f.receiver_name || '—',
-      'Receiving Date': formatDate(f.receiving_date),
-      'Return Date': formatDate(f.return_date),
-      'Status': f.status || '—'
-    }));
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "File Tracking");
-    XLSX.writeFile(wb, `File_Tracking_${new Date().getTime()}.xlsx`);
+  const generateDynamicTitle = () => {
+      let subject = "File Movement Tracking Report";
+      let parts = [];
+      if (putUpByFilter) parts.push(`Put up by: ${putUpByFilter}`);
+      if (search) parts.push(`matching "${search}"`);
+      return `${subject} ${parts.join(' - ')}`.trim();
   };
 
-  const handleExportPDF = () => {
+  const handleExport = async (type: 'excel' | 'pdf' | 'print') => {
     if (!filteredFiles || filteredFiles.length === 0) return;
-    const doc = new jsPDF('landscape', 'pt', 'a4');
-    doc.text(`File Movement Tracking Report`, 40, 40);
+    
+    const dynamicTitle = generateDynamicTitle();
+    
     const tableData = filteredFiles.map((f: any, i: number) => [
       i + 1,
-      f.file_name || '—',
-      f.case_subject || '—',
-      f.reason || '—',
-      f.put_up || '—',
-      formatDate(f.put_up_date),
-      f.mark_branch || '—',
       f.receiver_name || '—',
       formatDate(f.receiving_date),
       formatDate(f.return_date),
-      f.status || '—'
+      f.put_up || '—',
+      formatDate(f.put_up_date),
+      f.history ? f.history.map((h: any) => `${formatDate(h.date)}: ${h.action} (${h.remarks || ''})`).join(' | ') : '—'
     ]);
-    autoTable(doc, {
-      startY: 60,
-      head: [['#', 'File Name', 'Case / Subject', 'Reason', 'Put Up', 'Put Up Date', 'Mark Branch', 'Receiver', 'Rcv. Date', 'Return Date', 'Status']],
-      body: tableData,
-      theme: 'grid',
-      headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255] },
-      styles: { fontSize: 8 }
-    });
-    doc.save(`File_Tracking_${new Date().getTime()}.pdf`);
+
+    if (type === 'excel') {
+        const rows = tableData.map((f: any[]) => ({
+            'S.No': f[0], 'File Name': f[1], 'Subject': f[2], 'Reason': f[3],
+            'Put Up By': f[4], 'Put Up Date': f[5], 'Mark Branch': f[6], 'Receiver Name': f[7],
+            'Receiving Date': f[8], 'Return Date': f[9], 'Status': f[10]
+        }));
+        try {
+            const response = await api.post('/api/export/excel-generic', { title: dynamicTitle, data: rows }, { responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `File_Tracking_${new Date().getTime()}.xlsx`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (error) {
+            console.error("Export failed", error);
+            alert("Export failed.");
+        }
+    } else {
+        const doc = new jsPDF('landscape', 'pt', 'a4');
+        doc.text(dynamicTitle, 40, 40);
+        autoTable(doc, {
+            startY: 60,
+            head: [['#', 'File Name', 'Subject', 'Reason', 'Put Up', 'Put Up Date', 'Mark Branch', 'Receiver', 'Rcv Date', 'Return Date', 'Status']],
+            body: tableData,
+            theme: 'grid',
+            headStyles: { halign: 'center', valign: 'middle', fillColor: [64, 81, 137], textColor: [255, 255, 255], fontStyle: 'bold' },
+            bodyStyles: { halign: 'center', valign: 'middle', fillColor: [255, 255, 255], textColor: [0, 0, 0] },
+            alternateRowStyles: { fillColor: [255, 255, 255] },
+            columnStyles: { 1: { halign: 'left' } },
+            styles: { fontSize: 7 }
+        });
+        if (type === 'pdf') {
+            doc.save(`File_Tracking_${new Date().getTime()}.pdf`);
+        } else {
+            doc.autoPrint();
+            const blob = doc.output('blob');
+            window.open(URL.createObjectURL(blob), '_blank');
+        }
+    }
   };
 
   
@@ -397,11 +414,11 @@ export default function FileTrackingPage() {
                 <span className="text-lg font-black text-primary leading-none tabular-nums">{filteredFiles?.length || 0}</span>
                 <span className="text-[7px] font-black text-slate-400 uppercase tracking-[0.2em] mt-0.5">Records</span>
             </div>
-            <Button variant="ghost" size="sm" className="h-9 px-4 text-[11px] font-black text-slate-600 uppercase rounded-lg flex items-center gap-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all" onClick={handleExportExcel}><FileDown className="h-4 w-4 text-emerald-600" /> Excel</Button>
+            <Button variant="ghost" size="sm" className="h-9 px-4 text-[11px] font-black text-slate-600 uppercase rounded-lg flex items-center gap-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all" onClick={() => handleExport('excel')}><FileDown className="h-4 w-4 text-emerald-600" /> Excel</Button>
             <div className="w-[1px] h-6 bg-slate-100" />
-            <Button variant="ghost" size="sm" className="h-9 px-4 text-[11px] font-black text-slate-600 uppercase rounded-lg flex items-center gap-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all" onClick={handleExportPDF}><FileJson className="h-4 w-4 text-rose-600" /> PDF</Button>
+            <Button variant="ghost" size="sm" className="h-9 px-4 text-[11px] font-black text-slate-600 uppercase rounded-lg flex items-center gap-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all" onClick={() => handleExport('pdf')}><FileJson className="h-4 w-4 text-rose-600" /> PDF</Button>
             <div className="w-[1px] h-6 bg-slate-100" />
-            <Button variant="ghost" size="sm" className="h-9 px-4 text-[11px] font-black text-slate-600 uppercase rounded-lg flex items-center gap-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all" onClick={() => window.print()}><Printer className="h-4 w-4 text-blue-600" /> Print</Button>
+            <Button variant="ghost" size="sm" className="h-9 px-4 text-[11px] font-black text-slate-600 uppercase rounded-lg flex items-center gap-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all" onClick={() => handleExport('print')}><Printer className="h-4 w-4 text-blue-600" /> Print</Button>
             
             <div className="w-[1px] h-6 bg-slate-100 mx-2" />
 
@@ -537,7 +554,11 @@ export default function FileTrackingPage() {
         </div>
       </div>
 
-      <Card className="border-none shadow-2xl overflow-hidden bg-white rounded-3xl border border-slate-100">
+      <Card className="border-none shadow-xl bg-white overflow-hidden rounded-2xl print-area print:!shadow-none print:!border-none print:!rounded-none">
+        <div className="hidden print:block print-header w-full mb-4">
+           <h1>{generateDynamicTitle()}</h1>
+           <p>Total Records: {filteredFiles.length}</p>
+        </div>
         <div className="w-full overflow-x-auto">
           <Table className="w-full">
             <TableHeader className="bg-[#405189]">

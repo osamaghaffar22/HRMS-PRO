@@ -55,10 +55,10 @@ const OFFICIALS_COLUMNS = [
   { name: 'From / To', width: 'w-40' },
   { name: 'GA', width: 'w-24' },
   { name: 'Promotion', width: 'w-40' },
-  { name: 'Fitness', width: 'w-16' },
-  { name: 'Remarks', width: 'w-24' },
+  { name: 'Fitness', width: 'w-24' },
+  { name: 'Result', width: 'w-32' },
   { name: 'Duration', width: 'w-24' },
-  { name: 'Actions', width: 'w-20' }
+  { name: 'Actions', width: 'w-24' }
 ];
 
 const ASSESSMENT_OPTIONS = [
@@ -77,12 +77,12 @@ const FITNESS_OPTIONS = [
 ];
 
 const PROMOTION_OPTIONS = [
-  { value: 'Recommended for accelerated Promotion', label: 'A - Accelerated', key: 'A' },
-  { value: 'Fit for Promotion', label: 'B - Fit', key: 'B' },
-  { value: 'Recently promoted', label: 'C - Recent', key: 'C' },
-  { value: 'Assessment for the further promotion in premature', label: 'D - Premature', key: 'D' },
-  { value: 'Not yet fit for promotion but likely to become fit in course of time', label: 'E - Not Yet', key: 'E' },
-  { value: 'Unfit for further promotion', label: 'F - Unfit', key: 'F' },
+  { value: 'Recommended for accelerated Promotion', label: 'A - Recommended for accelerated Promotion', key: 'A' },
+  { value: 'Fit for Promotion', label: 'B - Fit for Promotion', key: 'B' },
+  { value: 'Recently promoted', label: 'C - Recently promoted', key: 'C' },
+  { value: 'Assessment for the further promotion in premature', label: 'D - Assessment for the further promotion in premature', key: 'D' },
+  { value: 'Not yet fit for promotion but likely to become fit in course of time', label: 'E - Not yet fit for promotion but likely to become fit in course of time', key: 'E' },
+  { value: 'Unfit for further promotion', label: 'F - Unfit for further promotion', key: 'F' },
 ];
 
 const RESULT_OPTIONS = [
@@ -136,9 +136,9 @@ export default function ACRPage() {
   const [completionFilter, setCompletionFilter] = useState<string[]>([]); 
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [gaFilter, setGaFilter] = useState<string[]>([]);
-  const [remarksFilter, setRemarksFilter] = useState<string[]>([]);
-  const [fitnessFilter, setFitnessFilter] = useState<string[]>([]);
   const [promotionFilter, setPromotionFilter] = useState<string[]>([]);
+  const [resultFilter, setResultFilter] = useState<string[]>([]);
+  const [fitnessFilter, setFitnessFilter] = useState<string[]>([]);
   const [designationFilter, setDesignationFilter] = useState<string[]>([]);
 
 // Form States
@@ -150,13 +150,15 @@ export default function ACRPage() {
     to_date: '',
     ga: '',
     promotion: '', 
-    remarks: '',
+
     fitness_after_25_years: '',
     ro_name: '',
     ro_date: '',
     co_name: '',
     co_date: '', 
     result: '',
+    ro_remarks: '',
+    co_remarks: '',
     status: 'Pending'
   });
 
@@ -179,10 +181,13 @@ export default function ACRPage() {
   const [historySearch, setHistorySearch] = useState('');
   const [historyGaFilter, setHistoryGaFilter] = useState<string[]>([]);
   const [historyPromotionFilter, setHistoryPromotionFilter] = useState<string[]>([]);
-  const [historyRemarksFilter, setHistoryRemarksFilter] = useState<string[]>([]);
+  const [historyResultFilter, setHistoryResultFilter] = useState<string[]>([]);
   const [historyFitnessFilter, setHistoryFitnessFilter] = useState<string[]>([]);
   const [historyYearFilter, setHistoryYearFilter] = useState<string[]>([]);
   const [historyPage, setHistoryPage] = useState(1);
+
+  const [officerModalOpen, setOfficerModalOpen] = useState(false);
+  const [officerModalData, setOfficerModalData] = useState<any>({ emp: null, year: '', from_date: '', to_date: '', status: 'Pending' });
   const ITEMS_PER_PAGE = 50;
 
   // Focus Refs
@@ -198,7 +203,8 @@ export default function ACRPage() {
   const roDateRef = useRef<HTMLInputElement>(null);
   const coSearchRef = useRef<HTMLInputElement>(null);
   const coDateRef = useRef<HTMLInputElement>(null);
-  const remarksRef = useRef<HTMLInputElement>(null);
+  const roRemarksRef = useRef<HTMLInputElement>(null);
+  const coRemarksRef = useRef<HTMLInputElement>(null);
   const saveBtnRef = useRef<HTMLButtonElement>(null);
 
   const [sort, setSort] = useState<{ key: string; order: 'asc' | 'desc' | null }>({ key: '', order: null });
@@ -256,9 +262,9 @@ export default function ACRPage() {
     setTabYearsFilter([prevYear]);
     setStatusFilter([]);
     setGaFilter([]);
-    setRemarksFilter([]);
-    setFitnessFilter([]);
     setPromotionFilter([]);
+    setResultFilter([]);
+    setFitnessFilter([]);
     setDesignationFilter([]);
     setCompletionFilter([]);
     setSearch('');
@@ -359,30 +365,93 @@ export default function ACRPage() {
     if (!from || !to) return "0Y 0M 0D";
     const d1 = new Date(from);
     const d2 = new Date(to);
-    const totalDays = Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-    if (totalDays >= 365) return "1 Year";
-    const y = Math.floor(totalDays / 365);
-    const m = Math.floor((totalDays % 365) / 30);
-    const d = (totalDays % 365) % 30;
-    return `${y}Y ${m}M ${d}D`;
+    
+    // Add 1 day to end date to make it inclusive (e.g., Jan 1 to Jan 31 is 31 days -> 1 month exactly)
+    const end = new Date(d2.getTime());
+    end.setDate(end.getDate() + 1);
+
+    let y = end.getFullYear() - d1.getFullYear();
+    let m = end.getMonth() - d1.getMonth();
+    let d = end.getDate() - d1.getDate();
+
+    if (d < 0) {
+        m -= 1;
+        const prevMonth = new Date(end.getFullYear(), end.getMonth(), 0).getDate();
+        d += prevMonth;
+    }
+    if (m < 0) {
+        y -= 1;
+        m += 12;
+    }
+    
+    if (y === 1 && m === 0 && d === 0) return "1 Year";
+    if (y === 0 && m === 0 && d === 0) return "0Y 0M 0D";
+    return `${y > 0 ? y + 'Y ' : ''}${m}M ${d}D`.trim();
   };
 
-  const getSumTenure = (periods: any[]) => {
+  const getSumTenure = (periods: any[], gaps: any[] = []) => {
     let totalDays = 0;
+    let sy = 0, sm = 0, sd = 0;
+    
     periods.forEach(p => {
+        if (!p.from || !p.to) return;
         const d1 = new Date(p.from);
         const d2 = new Date(p.to);
         totalDays += Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        
+        const dStr = formatTenure(p.from, p.to);
+        if (dStr === "1 Year") {
+            sy += 1;
+        } else {
+            const match = dStr.match(/(?:(\d+)Y\s*)?(\d+)M (\d+)D/);
+            if (match) {
+                sy += parseInt(match[1] || '0');
+                sm += parseInt(match[2]);
+                sd += parseInt(match[3]);
+            }
+        }
     });
-    const targetDays = 365;
-    const remainingDays = Math.max(0, targetDays - totalDays);
-    const y = Math.floor(totalDays / 365);
-    const m = Math.floor((totalDays % 365) / 30);
-    const d = (totalDays % 365) % 30;
-    const ry = Math.floor(remainingDays / 365);
-    const rm = Math.floor((remainingDays % 365) / 30);
-    const rd = (remainingDays % 365) % 30;
-    return { submitted: { y, m, d }, remaining: { y: ry, m: rm, d: rd }, totalDays, isCompleted: totalDays >= 365 };
+
+    sm += Math.floor(sd / 30);
+    sd = sd % 30;
+    sy += Math.floor(sm / 12);
+    sm = sm % 12;
+
+    const isManuallyCompleted = periods.some(p => p.isManuallyCompleted);
+
+    let ry = 0, rm = 0, rd = 0;
+    if (isManuallyCompleted) {
+        ry = 0;
+        rm = 0;
+        rd = 0;
+    } else if (gaps && gaps.length > 0) {
+        gaps.forEach(g => {
+            if (!g.from || !g.to) return;
+            const dStr = formatTenure(g.from, g.to);
+            if (dStr === "1 Year") {
+                ry += 1;
+            } else {
+                const match = dStr.match(/(?:(\d+)Y\s*)?(\d+)M (\d+)D/);
+                if (match) {
+                    ry += parseInt(match[1] || '0');
+                    rm += parseInt(match[2]);
+                    rd += parseInt(match[3]);
+                }
+            }
+        });
+        rm += Math.floor(rd / 30);
+        rd = rd % 30;
+        ry += Math.floor(rm / 12);
+        rm = rm % 12;
+    } else {
+        const remainingDays = Math.max(0, 365 - totalDays);
+        ry = Math.floor(remainingDays / 365);
+        const remT = remainingDays % 365;
+        rm = Math.floor(remT / 30.4167);
+        rd = Math.round(remT - (rm * 30.4167));
+    }
+
+    return { submitted: { y: sy, m: sm, d: sd }, remaining: { y: ry, m: rm, d: rd }, totalDays, isCompleted: totalDays >= 365 || isManuallyCompleted };
   };
 
   const calculateGaps = (targetYear: string, submittedPeriods: { from: string, to: string }[], joiningDate?: string) => {
@@ -448,7 +517,7 @@ export default function ACRPage() {
             const r = emp.reports?.find((rep: any) => rep.year === y);
             if (r) {
                 const submitted = r.periods?.map((p: any) => ({ ...p, year: y, report: r, emp, type: 'Submitted' })) || [];
-                const gaps = calculateGaps(y, submitted, emp.joining_date).map((g: any, idx: number) => ({
+                const gaps = r.is_manually_completed ? [] : calculateGaps(y, submitted, emp.joining_date).map((g: any, idx: number) => ({
                     id: `gap-${emp.id}-${y}-${idx}`,
                     year: y,
                     report: r,
@@ -456,7 +525,7 @@ export default function ACRPage() {
                     from: g.start.toISOString().split('T')[0],
                     to: g.end.toISOString().split('T')[0],
                     type: 'Missing', 
-                    ga: '', promotion: '', fitness_after_25_years: '', ro_name: '', co_name: '', result: '', remarks: ''
+                    ga: '', promotion: '', fitness_after_25_years: '', ro_name: '', co_name: '', result: '', ro_remarks: '', co_remarks: ''
                 }));
                 all.push(...submitted, ...gaps);
             } else {
@@ -474,7 +543,7 @@ export default function ACRPage() {
                     from: fromDate,
                     to: `${y}-12-31`,
                     type: 'Missing',
-                    ga: '', promotion: '', fitness_after_25_years: '', ro_name: '', co_name: '', result: '', remarks: ''
+                    ga: '', promotion: '', fitness_after_25_years: '', ro_name: '', co_name: '', result: '', ro_remarks: '', co_remarks: ''
                 });
             }
         });
@@ -485,7 +554,7 @@ export default function ACRPage() {
 
         const matchesGa = historyGaFilter.length === 0 || historyGaFilter.includes(p.ga);
         const matchesPromotion = historyPromotionFilter.length === 0 || historyPromotionFilter.includes(p.promotion);
-        const matchesRemarks = historyRemarksFilter.length === 0 || historyRemarksFilter.includes(p.remarks);
+        const matchesResult = historyResultFilter.length === 0 || historyResultFilter.includes(p.result);
         const matchesFitness = historyFitnessFilter.length === 0 || historyFitnessFilter.includes(p.fitness_after_25_years);
         const matchesYear = historyYearFilter.length === 0 || historyYearFilter.includes(p.year?.toString());
         
@@ -503,39 +572,89 @@ export default function ACRPage() {
                 (p.result && p.result.toLowerCase().includes(s))
             );
         }
-        return matchesGa && matchesPromotion && matchesRemarks && matchesFitness && matchesSearch;
+        return matchesGa && matchesPromotion && matchesResult && matchesFitness && matchesSearch;
     });
 
-    // Sort by Employee Name, then Year, then Date
-    all.sort((a, b) => {
-        if (a.emp.name !== b.emp.name) return a.emp.name.localeCompare(b.emp.name);
-        if (a.year !== b.year) return a.year.localeCompare(b.year);
-        return new Date(a.from).getTime() - new Date(b.from).getTime();
-    });
+    if (sort.key && sort.order) {
+        all.sort((a, b) => {
+            let valA = a[sort.key] !== undefined ? a[sort.key] : (a.emp && a.emp[sort.key]) || '';
+            let valB = b[sort.key] !== undefined ? b[sort.key] : (b.emp && b.emp[sort.key]) || '';
+            if (sort.key === 'bs') {
+                const numA = parseInt(valA) || 0;
+                const numB = parseInt(valB) || 0;
+                return sort.order === 'asc' ? numA - numB : numB - numA;
+            }
+            if (sort.key === 'from' || sort.key === 'to') {
+                return sort.order === 'asc' 
+                    ? new Date(valA).getTime() - new Date(valB).getTime()
+                    : new Date(valB).getTime() - new Date(valA).getTime();
+            }
+            valA = valA.toString().toLowerCase();
+            valB = valB.toString().toLowerCase();
+            if (valA < valB) return sort.order === 'asc' ? -1 : 1;
+            if (valA > valB) return sort.order === 'asc' ? 1 : -1;
+            return 0;
+        });
+    } else {
+        // Default Sort by Employee Name, then Year, then Date
+        all.sort((a, b) => {
+            if (a.emp?.name !== b.emp?.name) return (a.emp?.name || '').localeCompare(b.emp?.name || '');
+            if (a.year !== b.year) return (a.year || '').localeCompare(b.year || '');
+            return new Date(a.from).getTime() - new Date(b.from).getTime();
+        });
+    }
 
     return all;
-  }, [category, allHistoryData, selectedEmpHistoryData, historyTypeFilter, historySearch, historyGaFilter, historyPromotionFilter, historyRemarksFilter, historyFitnessFilter, historyYearFilter, availableYears, selectedFormEmp]);
+  }, [category, allHistoryData, selectedEmpHistoryData, historyTypeFilter, historySearch, historyGaFilter, historyPromotionFilter, historyResultFilter, historyFitnessFilter, historyYearFilter, availableYears, selectedFormEmp, sort]);
 
   useEffect(() => {
     setHistoryPage(1);
-  }, [historyTypeFilter, historySearch, historyGaFilter, historyPromotionFilter, historyRemarksFilter, historyFitnessFilter, historyYearFilter]);
+  }, [historyTypeFilter, historySearch, historyGaFilter, historyPromotionFilter, historyResultFilter, historyFitnessFilter, historyYearFilter]);
 
   const filteredEmployees = React.useMemo(() => {
     // Optimization: Only compute this if we are on Officer or Official tabs
     if (category !== 'Officer' && category !== 'Official') return [];
 
+    const yearsToProcess = tabYearsFilter.length > 0 ? tabYearsFilter : availableYears;
+
     let result = employees?.filter((emp: any) => {
-      const submitted = emp.reports?.flatMap((r: any) => r.periods.map((p: any) => ({...p, reportId: r.id, isManuallyCompleted: r.is_manually_completed}))) || [];
-      const total = getSumTenure(submitted);
-      const isCompleted = submitted.some((p: any) => p.isManuallyCompleted) || total.totalDays >= 365;
+      const joiningYear = getYearFromDate(emp.joining_date);
+
+      let allPeriodsForEmp: any[] = [];
+      let totalSavedDays = 0;
+      let validYears = 0;
+
+      yearsToProcess.forEach((y: string) => {
+          if (joiningYear > 0 && parseInt(y) < joiningYear) return;
+          validYears++;
+
+          const r = emp.reports?.find((rep: any) => rep.year === y);
+          let submittedForYear: any[] = [];
+          let isManuallyCompleted = false;
+          if (r) {
+              isManuallyCompleted = r.is_manually_completed;
+              submittedForYear = r.periods?.map((p: any) => ({...p, reportId: r.id, isManuallyCompleted: r.is_manually_completed, type: 'Submitted', year: y})) || [];
+          }
+          
+          const gapsForYear = isManuallyCompleted ? [] : calculateGaps(y, submittedForYear, emp.joining_date).map((g: any, idx: number) => ({ id: `gap-${emp.id}-${y}-${idx}`, year: y, from: g.start.toISOString().split('T')[0], to: g.end.toISOString().split('T')[0], type: 'Remaining', status: 'Pending' }));
+          
+          allPeriodsForEmp.push(...submittedForYear, ...gapsForYear);
+          totalSavedDays += getSumTenure(submittedForYear).totalDays;
+      });
+
+      if (allPeriodsForEmp.length === 0 && yearsToProcess.length > 0) return false;
+
+      const isCompleted = allPeriodsForEmp.some((p: any) => p.isManuallyCompleted) || totalSavedDays >= (365 * validYears);
       const matchesCompletion = completionFilter.length === 0 || (completionFilter.includes('Completed') && isCompleted) || (completionFilter.includes('Incomplete') && !isCompleted);
-      const matchesStatus = statusFilter.length === 0 || submitted.some((p: any) => statusFilter.includes(p.status));
-      const matchesGa = gaFilter.length === 0 || submitted.some((p: any) => gaFilter.includes(p.ga));
-      const matchesPromotion = promotionFilter.length === 0 || submitted.some((p: any) => promotionFilter.includes(p.promotion));
-      const matchesRemarks = remarksFilter.length === 0 || submitted.some((p: any) => remarksFilter.includes(p.remarks));
-      const matchesFitness = fitnessFilter.length === 0 || submitted.some((p: any) => fitnessFilter.includes(p.fitness_after_25_years));
+      
+      const matchesStatus = statusFilter.length === 0 || allPeriodsForEmp.some((p: any) => statusFilter.includes(p.status));
+      const matchesGa = gaFilter.length === 0 || allPeriodsForEmp.some((p: any) => gaFilter.includes(p.ga));
+      const matchesPromotion = promotionFilter.length === 0 || allPeriodsForEmp.some((p: any) => promotionFilter.includes(p.promotion));
+      const matchesResult = resultFilter.length === 0 || allPeriodsForEmp.some((p: any) => resultFilter.includes(p.result));
+      const matchesFitness = fitnessFilter.length === 0 || allPeriodsForEmp.some((p: any) => fitnessFilter.includes(p.fitness_after_25_years));
       const matchesDesignation = designationFilter.length === 0 || designationFilter.includes(emp.post_name || '');
-      return matchesCompletion && matchesStatus && matchesGa && matchesPromotion && matchesRemarks && matchesFitness && matchesDesignation;
+      
+      return matchesCompletion && matchesStatus && matchesGa && matchesPromotion && matchesResult && matchesFitness && matchesDesignation;
     }) || [];
 
     if (sort.key && sort.order) {
@@ -555,7 +674,7 @@ export default function ACRPage() {
         });
     }
     return result;
-  }, [category, employees, sort, completionFilter, statusFilter, gaFilter, promotionFilter, remarksFilter, fitnessFilter, designationFilter]);
+  }, [category, employees, sort, completionFilter, statusFilter, gaFilter, promotionFilter, resultFilter, fitnessFilter, designationFilter, tabYearsFilter, availableYears]);
 
   // --- Mutations ---
   const addPeriodMutation = useMutation({
@@ -565,17 +684,17 @@ export default function ACRPage() {
       if (!tid) tid = (await api.post('/api/acr/report', { report_data: { employee_id: data.employeeId, year: periodYear, status: 'Pending' } })).data.id;
       return api.post('/api/acr/period', { period_data: { acr_report_id: tid, ...data.period_data, status: data.period_data?.status || "Pending" } });
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['acr-employees'] }); refetchAllHistory(); }
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['acr-employees'] }); queryClient.invalidateQueries({ queryKey: ['acr-selected-history'] }); refetchAllHistory(); }
   });
 
   const updatePeriodMutation = useMutation({
     mutationFn: async (data: any) => api.patch(`/api/acr/period/${data.id}`, data.fields),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['acr-employees'] }); refetchAllHistory(); }
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['acr-employees'] }); queryClient.invalidateQueries({ queryKey: ['acr-selected-history'] }); refetchAllHistory(); }
   });
 
   const deletePeriodMutation = useMutation({
     mutationFn: (id: number) => api.delete(`/api/acr/period/${id}`),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['acr-employees'] }); refetchAllHistory(); }
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['acr-employees'] }); queryClient.invalidateQueries({ queryKey: ['acr-selected-history'] }); refetchAllHistory(); }
   });
 
   
@@ -616,11 +735,18 @@ export default function ACRPage() {
     }
   };
 
-  const handleSearchKeyDown = (e: React.KeyboardEvent, list: any[], activeIdx: number, setIdx: any, onSelect: (item: any) => void) => {
-    if (!list || list.length === 0) return;
-    if (e.key === 'ArrowDown') { setIdx((p: number) => Math.min(p + 1, list.length - 1)); e.preventDefault(); }
-    else if (e.key === 'ArrowUp') { setIdx((p: number) => Math.max(p - 1, 0)); e.preventDefault(); }
-    else if (e.key === 'Enter' && list[activeIdx]) { onSelect(list[activeIdx]); e.preventDefault(); }
+  const handleSearchKeyDown = (e: React.KeyboardEvent, list: any[], activeIdx: number, setIdx: any, onSelect: (item: any) => void, nextRef?: any) => {
+    if (e.key === 'ArrowDown') { if (list && list.length > 0) setIdx((p: number) => Math.min(p + 1, list.length - 1)); e.preventDefault(); }
+    else if (e.key === 'ArrowUp') { if (list && list.length > 0) setIdx((p: number) => Math.max(p - 1, 0)); e.preventDefault(); }
+    else if (e.key === 'Enter') { 
+      if (list && list.length > 0 && list[activeIdx]) { 
+        onSelect(list[activeIdx]); 
+      } else if (nextRef) {
+        setActiveDropdown(null);
+        jumpToField(nextRef, null);
+      }
+      e.preventDefault(); 
+    }
   };
 
   const selectPersonnel = (e: any) => { setSelectedFormEmp(e); setFormEmpSearch(e.name); setPersonnelIdx(0); jumpToField(yearInputRef, 'year'); };
@@ -645,7 +771,8 @@ export default function ACRPage() {
       to_date: cleanDate(p.to),
       ga: p.ga || '',
       promotion: p.promotion || '',
-      remarks: p.remarks || '',
+      ro_remarks: p.ro_remarks || '',
+      co_remarks: p.co_remarks || '',
       fitness_after_25_years: p.fitness_after_25_years || '',
       ro_name: p.ro_name || '',
       ro_date: cleanDate(p.ro_date),
@@ -663,24 +790,33 @@ export default function ACRPage() {
   };
 
   const startAddMissing = (p: any, empRecord?: any) => {
+    const employee = empRecord || p.emp;
+    const cleanDate = (d: string) => d ? d.split('T')[0] : '';
+    const year = p.year?.toString() || (new Date().getFullYear() - 1).toString();
+    const from_date = cleanDate(p.from);
+    const to_date = cleanDate(p.to);
+
+    if (category === 'Officer') {
+      setOfficerModalData({ emp: employee, year, from_date, to_date, status: 'Pending' });
+      setOfficerModalOpen(true);
+      return;
+    }
+
     isJumping.current = true;
     setActiveDropdown(null);
-    const employee = empRecord || p.emp;
     setEditingPeriodId(null);
     setSelectedFormEmp(employee); 
     setFormEmpSearch(employee?.name || '');
     setRoSearch('');
     setCoSearch('');
     
-    const cleanDate = (d: string) => d ? d.split('T')[0] : '';
-
     setAcrFormData({
-      year: p.year?.toString() || (new Date().getFullYear() - 1).toString(),
-      from_date: cleanDate(p.from),
-      to_date: cleanDate(p.to),
+      year,
+      from_date,
+      to_date,
       ga: '',
       promotion: '',
-      remarks: '',
+
       fitness_after_25_years: '',
       ro_name: '',
       ro_date: '',
@@ -712,34 +848,55 @@ export default function ACRPage() {
         alert("ACR Entry Saved!");
       }
       
-      setAcrFormData((prev: any) => ({ ...prev, from_date: '', to_date: '', ga: '', promotion: '', remarks: '', fitness_after_25_years: '', ro_name: '', ro_date: '', co_name: '', co_date: '', result: '', status: 'Pending' }));
+      setAcrFormData((prev: any) => ({ ...prev, from_date: '', to_date: '', ga: '', promotion: '', ro_remarks: '', co_remarks: '', fitness_after_25_years: '', ro_name: '', ro_date: '', co_name: '', co_date: '', result: '', status: 'Pending' }));
       setRoSearch(''); setCoSearch(''); setSelectedRo(null); setSelectedCo(null); setEditingPeriodId(null);
-      refetchAllHistory(); queryClient.invalidateQueries({ queryKey: ['acr-employees'] });
+      refetchAllHistory(); queryClient.invalidateQueries({ queryKey: ['acr-employees'] }); queryClient.invalidateQueries({ queryKey: ['acr-selected-history'] });
       setTimeout(() => personnelSearchRef.current?.focus(), 100);
     } catch (err: any) { alert("Error saving"); }
   };
 
-  
-  const [isExporting, setIsExporting] = useState(false);
-  const handleExportExcel = async () => {
+  const handleOfficerModalSave = async () => {
+    if (!officerModalData.from_date || !officerModalData.to_date) {
+      alert("Dates are required");
+      return;
+    }
     try {
-      setIsExporting(true);
-      const params = new URLSearchParams();
-      if (deferredSearch) params.append('search', deferredSearch);
-      const apiCategory = category === 'Form' ? 'Officer' : (category === 'History' ? 'Official' : category);
-      if (category) params.append('category', apiCategory);
-      if (tabYearsFilter.length > 0) params.append('year', tabYearsFilter[0]);
-      const url = `${api.defaults.baseURL}/api/acr/export/excel?${params.toString()}`;
-      window.open(url, '_blank');
-    } catch (error) {
-      console.error("Export failed:", error);
-      alert("Export failed. Please try again.");
-    } finally {
-      setIsExporting(false);
+      const allRes = await api.get(`/api/acr?search=${encodeURIComponent(officerModalData.emp.name)}&category=All&year=${officerModalData.year}`);
+      const empRecord = allRes.data.find((e: any) => e.id === officerModalData.emp.id);
+      let tid = empRecord?.reports?.find((r: any) => r.year === officerModalData.year)?.id;
+      if (!tid) {
+        const res = await api.post('/api/acr/report', { report_data: { employee_id: officerModalData.emp.id, year: officerModalData.year, status: officerModalData.status } });
+        tid = res.data.id;
+      }
+      await api.post('/api/acr/period', { period_data: { acr_report_id: tid, from_date: officerModalData.from_date, to_date: officerModalData.to_date, status: officerModalData.status, ga: '', promotion: '', ro_remarks: '', co_remarks: '', fitness_after_25_years: '', ro_name: '', ro_date: '', co_name: '', co_date: '', result: '' } });
+      alert("ACR Period Added!");
+      setOfficerModalOpen(false);
+      refetchAllHistory(); 
+      queryClient.invalidateQueries({ queryKey: ['acr-employees'] }); queryClient.invalidateQueries({ queryKey: ['acr-selected-history'] });
+    } catch (e) {
+      console.error(e);
+      alert("Error adding period");
     }
   };
 
-  const handleExportPDF = async () => {
+  
+  const [isExporting, setIsExporting] = useState(false);
+  const generateDynamicTitle = () => {
+      let subject = "ACR Management Report";
+      const cat = category === 'Form' ? 'Officers' : (category === 'History' ? 'Officials' : category);
+      if (cat) subject += ` (${cat})`;
+      
+      let parts = [];
+      if (tabYearsFilter.length > 0) parts.push(`for Year ${tabYearsFilter[0]}`);
+      else parts.push(`for All Years`);
+      
+      if (completionFilter.length > 0) parts.push(`- ${completionFilter.join(' & ')} only`);
+      if (deferredSearch) parts.push(`matching "${deferredSearch}"`);
+      
+      return `${subject} ${parts.join(' ')}`.trim();
+  };
+
+  const handleExport = async (type: 'excel' | 'pdf' | 'print', isComplete: boolean = false) => {
     try {
       setIsExporting(true);
       const params = new URLSearchParams();
@@ -750,114 +907,265 @@ export default function ACRPage() {
       params.append('limit', '10000');
       
       const res = await api.get(`/api/acr?${params.toString()}`);
-      const exportEmployees = res.data;
+      let exportEmployees = res.data;
 
       if (!exportEmployees || exportEmployees.length === 0) {
         alert("No records found for export.");
         return;
       }
 
-      const doc = new jsPDF('landscape', 'pt', 'a4');
-      doc.text(`ACR Management Report - ${tabYearsFilter[0] || 'All'} (${category})`, 40, 40);
+      exportEmployees = exportEmployees.filter((emp: any) => {
+          const joiningYear = getYearFromDate(emp.joining_date);
+          let allPeriodsForEmp: any[] = [];
+          let totalSavedDays = 0;
+          let validYears = 0;
+          const yearsToProcess = tabYearsFilter.length > 0 ? tabYearsFilter : availableYears;
+
+          yearsToProcess.forEach((y: string) => {
+              if (joiningYear > 0 && parseInt(y) < joiningYear) return;
+              validYears++;
+
+              const r = emp.reports?.find((rep: any) => rep.year === y);
+              let submittedForYear: any[] = [];
+              let isManuallyCompleted = false;
+              if (r) {
+                  isManuallyCompleted = r.is_manually_completed;
+                  submittedForYear = r.periods?.map((p: any) => ({...p, reportId: r.id, isManuallyCompleted: r.is_manually_completed, type: 'Submitted', year: y})) || [];
+              }
+              
+              const gapsForYear = isManuallyCompleted ? [] : calculateGaps(y, submittedForYear, emp.joining_date).map((g: any, idx: number) => ({ id: `gap-${emp.id}-${y}-${idx}`, year: y, from: g.start.toISOString().split('T')[0], to: g.end.toISOString().split('T')[0], type: 'Remaining', status: 'Pending' }));
+              
+              allPeriodsForEmp.push(...submittedForYear, ...gapsForYear);
+              totalSavedDays += getSumTenure(submittedForYear).totalDays;
+          });
+
+          if (allPeriodsForEmp.length === 0 && yearsToProcess.length > 0) return false;
+
+          const isCompleted = allPeriodsForEmp.some((p: any) => p.isManuallyCompleted) || totalSavedDays >= (365 * validYears);
+          const matchesCompletion = completionFilter.length === 0 || (completionFilter.includes('Completed') && isCompleted) || (completionFilter.includes('Incomplete') && !isCompleted);
+          
+          const matchesStatus = statusFilter.length === 0 || allPeriodsForEmp.some((p: any) => statusFilter.includes(p.status));
+          const matchesGa = gaFilter.length === 0 || allPeriodsForEmp.some((p: any) => gaFilter.includes(p.ga));
+          const matchesPromotion = promotionFilter.length === 0 || allPeriodsForEmp.some((p: any) => promotionFilter.includes(p.promotion));
+          const matchesResult = resultFilter.length === 0 || allPeriodsForEmp.some((p: any) => resultFilter.includes(p.result));
+          const matchesFitness = fitnessFilter.length === 0 || allPeriodsForEmp.some((p: any) => fitnessFilter.includes(p.fitness_after_25_years));
+          const matchesDesignation = designationFilter.length === 0 || designationFilter.includes(emp.post_name);
+
+          return matchesCompletion && matchesStatus && matchesGa && matchesPromotion && matchesResult && matchesFitness && matchesDesignation;
+      });
+
+      if (exportEmployees.length === 0) {
+        alert("No records found for export after applying filters.");
+        setIsExporting(false);
+        return;
+      }
+
+      if (sort.key && sort.order) {
+          exportEmployees = [...exportEmployees].sort((a, b) => {
+              let valA = a[sort.key] || '';
+              let valB = b[sort.key] || '';
+              if (sort.key === 'bs') {
+                  const numA = parseInt(valA) || 0;
+                  const numB = parseInt(valB) || 0;
+                  return sort.order === 'asc' ? numA - numB : numB - numA;
+              }
+              valA = valA.toString().toLowerCase();
+              valB = valB.toString().toLowerCase();
+              if (valA < valB) return sort.order === 'asc' ? -1 : 1;
+              if (valA > valB) return sort.order === 'asc' ? 1 : -1;
+              return 0;
+          });
+      }
+
       const tableData: any[] = [];
       exportEmployees.forEach((emp: any, i: number) => {
-          const submitted = emp.reports?.flatMap((r: any) => r.periods.map((p: any) => ({...p}))) || [];
+          const submitted = emp.reports?.flatMap((r: any) => r.periods.map((p: any) => ({...p, year: r.year}))) || [];
           const showSubmitted = completionFilter.length === 0 || completionFilter.includes('Completed');
           const showRemaining = completionFilter.length === 0 || completionFilter.includes('Incomplete');
+          let employeeHasRow = false;
+
+          const pushRow = (from: string, to: string, duration: string, p?: any, status?: string) => {
+              if (category === 'Official') {
+                  if (isComplete) {
+                      tableData.push([
+                          i + 1, emp.name, emp.post_name, emp.bs, emp.branch_office, from, to, duration, 
+                          p?.ga || '-', p?.promotion || '-', p?.fitness_after_25_years || '-', p?.result || '-',
+                          p?.ro_name || '-', p?.ro_date ? formatDisplayDate(p.ro_date) : '-',
+                          p?.co_name || '-', p?.co_date ? formatDisplayDate(p.co_date) : '-',
+                          p?.ro_remarks || '-', p?.co_remarks || '-'
+                      ]);
+                  } else {
+                      tableData.push([i + 1, emp.name, emp.post_name, emp.bs, emp.branch_office, from, to, p?.ga || '-', p?.promotion || '-', p?.fitness_after_25_years || '-', p?.result || '-', duration]);
+                  }
+              } else {
+                  tableData.push([i + 1, emp.name, emp.post_name, emp.bs, emp.branch_office, from, to, duration, status]);
+              }
+              employeeHasRow = true;
+          };
+
           if (showSubmitted) {
               submitted.forEach((p: any) => {
                   if (tabYearsFilter.length > 0 && !tabYearsFilter.includes(p.year?.toString())) return;
-                  tableData.push([i + 1, emp.name, emp.post_name, emp.bs, emp.branch_office, formatDisplayDate(p.from), formatDisplayDate(p.to), formatTenure(p.from, p.to), 'Submitted']);
+                  pushRow(formatDisplayDate(p.from), formatDisplayDate(p.to), formatTenure(p.from, p.to), p, p.status === 'Sent' ? 'Sent to ECP' : (p.status || 'Pending'));
               });
           }
           if (showRemaining) {
               const yearsToCheck = tabYearsFilter.length > 0 ? tabYearsFilter : [(new Date().getFullYear() - 1).toString()];
               yearsToCheck.forEach(y => {
+                  const r = emp.reports?.find((rep: any) => rep.year === y);
+                  if (r?.is_manually_completed) return; // Skip if marked manually completed!
                   const gaps = calculateGaps(y, submitted.filter((p: any) => p.year?.toString() === y), emp.joining_date);
                   gaps.forEach((g: any) => {
                       const fromStr = g.start.toISOString().split('T')[0];
                       const toStr = g.end.toISOString().split('T')[0];
-                      tableData.push([i + 1, emp.name, emp.post_name, emp.bs, emp.branch_office, formatDisplayDate(fromStr), formatDisplayDate(toStr), formatTenure(fromStr, toStr), 'Remaining']);
+                      pushRow(formatDisplayDate(fromStr), formatDisplayDate(toStr), formatTenure(fromStr, toStr), null, 'Remaining');
                   });
               });
           }
+          
+          if (!employeeHasRow) {
+              if (category === 'Official') {
+                  if (isComplete) {
+                      tableData.push([i + 1, emp.name, emp.post_name, emp.bs, emp.branch_office, '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-']);
+                  } else {
+                      tableData.push([i + 1, emp.name, emp.post_name, emp.bs, emp.branch_office, '-', '-', '-', '-', '-', '-', '-']);
+                  }
+              } else {
+                  tableData.push([i + 1, emp.name, emp.post_name, emp.bs, emp.branch_office, '-', '-', '-', 'Completed']);
+              }
+          }
       });
-      autoTable(doc, {
-        startY: 60,
-        head: [['#', 'Name', 'Designation', 'BPS', 'Office', 'From', 'To', 'Duration', 'Remarks']],
-        body: tableData,
-        theme: 'grid',
-        headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42] },
-        styles: { fontSize: 8 }
-      });
-      doc.save(`ACR_Report_${tabYearsFilter[0] || 'All'}_${new Date().getTime()}.pdf`);
+
+      const dynamicTitle = generateDynamicTitle();
+
+      if (type === 'excel') {
+          let excelData;
+          if (category === 'Official') {
+              if (isComplete) {
+                  excelData = tableData.map(row => ({
+                      'S.No': row[0], 'Name': row[1] || '', 'Designation': row[2] || '', 'BPS': row[3] || '',
+                      'Office': row[4] || '', 'From': row[5] || '', 'To': row[6] || '', 'Duration': row[7] || '',
+                      'GA': row[8] || '', 'Promotion': row[9] || '', 'Fitness': row[10] || '', 'Result': row[11] || '',
+                      'Reporting Officer': row[12] || '', 'RO Date': row[13] || '', 'RO Remarks': row[16] || '',
+                      'Counter Signing Officer': row[14] || '', 'CO Date': row[15] || '', 'CO Remarks': row[17] || ''
+                  }));
+              } else {
+                  excelData = tableData.map(row => ({
+                      'S.No': row[0], 'Name': row[1] || '', 'Designation': row[2] || '', 'BPS': row[3] || '',
+                      'Office': row[4] || '', 'From': row[5] || '', 'To': row[6] || '', 'GA': row[7] || '', 
+                      'Promotion': row[8] || '', 'Fitness': row[9] || '', 'Result': row[10] || '', 'Duration': row[11] || ''
+                  }));
+              }
+          } else {
+              excelData = tableData.map(row => ({
+                  'S.No': row[0], 'Name': row[1] || '', 'Designation': row[2] || '', 'BPS': row[3] || '',
+                  'Office': row[4] || '', 'From': row[5] || '', 'To': row[6] || '', 'Duration': row[7] || '', 'Status': row[8] || ''
+              }));
+          }
+          const response = await api.post('/api/export/excel-generic', { title: dynamicTitle, data: excelData }, { responseType: 'blob' });
+          const url = window.URL.createObjectURL(new Blob([response.data]));
+          const link = document.createElement('a');
+          link.href = url;
+          link.setAttribute('download', `ACR_Report_${new Date().getTime()}.xlsx`);
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+      } else {
+          const doc = new jsPDF('landscape', 'pt', 'a4');
+          doc.text(dynamicTitle, 40, 40);
+          autoTable(doc, {
+            startY: 60,
+            head: category === 'Official' 
+                  ? [['#', 'Name', 'Designation', 'BPS', 'Office', 'From', 'To', 'GA', 'Promotion', 'Fitness', 'Result', 'Duration']]
+                  : [['#', 'Name', 'Designation', 'BPS', 'Office', 'From', 'To', 'Duration', 'Status']],
+            body: tableData,
+            theme: 'grid',
+            headStyles: { halign: 'center', valign: 'middle', fillColor: [64, 81, 137], textColor: [255, 255, 255], fontStyle: 'bold' },
+            bodyStyles: { halign: 'center', valign: 'middle', fillColor: [255, 255, 255], textColor: [0, 0, 0] },
+            alternateRowStyles: { fillColor: [255, 255, 255] },
+            columnStyles: { 1: { halign: 'left' } },
+            styles: { fontSize: 8 }
+          });
+          if (type === 'pdf') {
+              doc.save(`ACR_Report_${new Date().getTime()}.pdf`);
+          } else {
+              doc.autoPrint();
+              const blob = doc.output('blob');
+              window.open(URL.createObjectURL(blob), '_blank');
+          }
+      }
     } catch (error) {
-      console.error("PDF Export failed:", error);
-      alert("PDF Export failed. Please try again.");
+      console.error("Export failed:", error);
+      alert("Export failed. Please try again.");
     } finally {
       setIsExporting(false);
     }
   };
 
-  const handleHistoryExportExcel = () => {
+  const handleHistoryExport = async (type: 'excel' | 'pdf' | 'print') => {
     if (!flatHistory || flatHistory.length === 0) return;
-    const rows = flatHistory.map((p: any, i: number) => ({
-      'S.No': i + 1,
-      'Code': p.emp?.code || p.emp?.id,
-      'Name': p.emp?.name,
-      'BPS': p.emp?.bs,
-      'Designation': p.emp?.post_name,
-      'Office/Branch': p.emp?.branch_office,
-      'Year': p.year,
-      'From': formatDisplayDate(p.from),
-      'To': formatDisplayDate(p.to),
-      'GA': p.ga || '-',
-      'Promotion': p.promotion || '-',
-      'Fitness': p.fitness_after_25_years || '-',
-      'RO Name': p.ro_name || '-',
-      'CO Name': p.co_name || '-',
-      'Result': p.result || '-',
-      'Duration': formatTenure(p.from, p.to),
-      'Type': p.type
-    }));
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "ACR_History");
-    const filename = selectedFormEmp ? `ACR_History_${selectedFormEmp.name}` : `ACR_Global_History`;
-    XLSX.writeFile(wb, `${filename}_${new Date().getTime()}.xlsx`);
-  };
+    try {
+        setIsExporting(true);
+        const title = selectedFormEmp ? `ACR History - ${selectedFormEmp.name}` : `Global ACR History Tracker`;
+        const filename = selectedFormEmp ? `ACR_History_${selectedFormEmp.name}` : `ACR_Global_History`;
 
-  const handleHistoryExportPDF = () => {
-    if (!flatHistory || flatHistory.length === 0) return;
-    const doc = new jsPDF('landscape', 'pt', 'a4');
-    const title = selectedFormEmp ? `ACR History - ${selectedFormEmp.name}` : `Global ACR History Tracker`;
-    doc.text(title, 40, 40);
-    const tableData = flatHistory.map((p: any, i: number) => [
-      i + 1,
-      p.emp?.name || '-',
-      p.year,
-      formatDisplayDate(p.from),
-      formatDisplayDate(p.to),
-      p.ga || '-',
-      p.promotion || '-',
-      p.fitness_after_25_years || '-',
-      p.result || '-',
-      formatTenure(p.from, p.to),
-      p.type
-    ]);
-    autoTable(doc, {
-      startY: 60,
-      head: [['#', 'Name', 'Year', 'From', 'To', 'GA', 'Promotion', 'Fitness', 'Result', 'Duration', 'Status']],
-      body: tableData,
-      theme: 'grid',
-      headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42] },
-      styles: { fontSize: 7 }
-    });
-    const filename = selectedFormEmp ? `ACR_History_${selectedFormEmp.name}` : `ACR_Global_History`;
-    doc.save(`${filename}_${new Date().getTime()}.pdf`);
-  };
+        const tableData = flatHistory.map((p: any, i: number) => [
+            i + 1,
+            p.emp?.name || '-',
+            p.year,
+            formatDisplayDate(p.from),
+            formatDisplayDate(p.to),
+            p.ga || '-',
+            p.promotion || '-',
+            p.fitness_after_25_years || '-',
+            p.result || '-',
+            formatTenure(p.from, p.to),
+            p.type
+        ]);
 
-  const handlePrint = () => window.print();
+        if (type === 'excel') {
+            const excelData = tableData.map(row => ({
+                'S.No': row[0], 'Name': row[1] || '', 'Year': row[2] || '', 'From': row[3] || '',
+                'To': row[4] || '', 'GA': row[5] || '', 'Promotion': row[6] || '', 'Fitness': row[7] || '',
+                'Result': row[8] || '', 'Duration': row[9] || '', 'Status': row[10] || ''
+            }));
+            const response = await api.post('/api/export/excel-generic', { title: title, data: excelData }, { responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `${filename}_${new Date().getTime()}.xlsx`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } else {
+            const doc = new jsPDF('landscape', 'pt', 'a4');
+            doc.text(title, 40, 40);
+            autoTable(doc, {
+                startY: 60,
+                head: [['#', 'Name', 'Year', 'From', 'To', 'GA', 'Promotion', 'Fitness', 'Result', 'Duration', 'Status']],
+                body: tableData,
+                theme: 'grid',
+                headStyles: { halign: 'center', valign: 'middle', fillColor: [64, 81, 137], textColor: [255, 255, 255], fontStyle: 'bold' },
+                bodyStyles: { halign: 'center', valign: 'middle', fillColor: [255, 255, 255], textColor: [0, 0, 0] },
+                alternateRowStyles: { fillColor: [255, 255, 255] },
+                columnStyles: { 1: { halign: 'left' } },
+                styles: { fontSize: 7 }
+            });
+            if (type === 'pdf') {
+                doc.save(`${filename}_${new Date().getTime()}.pdf`);
+            } else {
+                doc.autoPrint();
+                const blob = doc.output('blob');
+                window.open(URL.createObjectURL(blob), '_blank');
+            }
+        }
+    } catch (error) {
+        console.error("Export failed:", error);
+        alert("Export failed. Please try again.");
+    } finally {
+        setIsExporting(false);
+    }
+  };
 
   const addPeriod = async (e: React.FormEvent, employeeId: number, reportId: number | null) => {
     e.preventDefault();
@@ -873,43 +1181,61 @@ export default function ACRPage() {
         await api.post('/api/acr/period', { 
             period_data: { acr_report_id: targetReportId, from_date: fromDate, to_date: formData.get('to_date'), status: "Pending" }
         });
-        queryClient.invalidateQueries({ queryKey: ['acr-employees'] });
+        queryClient.invalidateQueries({ queryKey: ['acr-employees'] }); queryClient.invalidateQueries({ queryKey: ['acr-selected-history'] });
         refetchAllHistory();
     } catch (error: any) { alert(error.response?.data?.detail || "An error occurred."); }
   };
 
   const updatePeriodField = async (id: number, field: string, value: string) => {
-    const qKey = ['acr-employees', deferredSearch, category === 'Form' ? 'Officer' : category];
+    const currentCategory = category === 'Form' ? 'Officer' : (category === 'History' ? 'Official' : category);
+    const qKey = ['acr-employees', deferredSearch, currentCategory, page];
     const previousEmployees = queryClient.getQueryData(qKey);
     queryClient.setQueryData(qKey, (old: any) => {
-        if (!old) return old;
-        return old.map((emp: any) => ({
-            ...emp,
-            reports: emp.reports?.map((r: any) => ({ ...r, periods: r.periods?.map((p: any) => p.id === id ? { ...p, [field]: value } : p) }))
-        }));
+        if (!old || !old.data) return old;
+        return {
+            ...old,
+            data: old.data.map((emp: any) => ({
+                ...emp,
+                reports: emp.reports?.map((r: any) => ({ ...r, periods: r.periods?.map((p: any) => p.id === id ? { ...p, [field]: value } : p) }))
+            }))
+        };
     });
-    try { await api.patch(`/api/acr/period/${id}`, { [field]: value }); } 
-    catch (err) { queryClient.setQueryData(qKey, previousEmployees); }
+    try { 
+        await api.patch(`/api/acr/period/${id}`, { [field]: value });
+        queryClient.invalidateQueries({ queryKey: ['acr-employees'] }); queryClient.invalidateQueries({ queryKey: ['acr-selected-history'] });
+    } 
+    catch (err) { 
+        queryClient.setQueryData(qKey, previousEmployees); 
+    }
   };
 
-  const deletePeriod = async (id: number) => {
-    await api.delete(`/api/acr/period/${id}`);
-    queryClient.invalidateQueries({ queryKey: ['acr-employees'] });
-    refetchAllHistory();
+  const deletePeriod = (id: number) => {
+    if (window.confirm("Are you sure you want to delete this record? This action cannot be undone.")) {
+      deletePeriodMutation.mutate(id);
+    }
   };
 
   const toggleReportCompletion = async (reportId: number) => {
-    const qKey = ['acr-employees', deferredSearch, category === 'Form' ? 'Officer' : category];
+    const currentCategory = category === 'Form' ? 'Officer' : (category === 'History' ? 'Official' : category);
+    const qKey = ['acr-employees', deferredSearch, currentCategory, page];
     const previousEmployees = queryClient.getQueryData(qKey);
     queryClient.setQueryData(qKey, (old: any) => {
-        if (!old) return old;
-        return old.map((emp: any) => ({
-            ...emp,
-            reports: emp.reports?.map((r: any) => ({ ...r, is_manually_completed: r.id === reportId ? !r.is_manually_completed : r.is_manually_completed }))
-        }));
+        if (!old || !old.data) return old;
+        return {
+            ...old,
+            data: old.data.map((emp: any) => ({
+                ...emp,
+                reports: emp.reports?.map((r: any) => ({ ...r, is_manually_completed: r.id === reportId ? !r.is_manually_completed : r.is_manually_completed }))
+            }))
+        };
     });
-    try { await api.patch(`/api/acr/report/${reportId}/toggle-complete`); } 
-    catch (err) { queryClient.setQueryData(qKey, previousEmployees); }
+    try { 
+        await api.patch(`/api/acr/report/${reportId}/toggle-complete`); 
+        queryClient.invalidateQueries({ queryKey: ['acr-employees'] }); queryClient.invalidateQueries({ queryKey: ['acr-selected-history'] });
+    } 
+    catch (err) { 
+        queryClient.setQueryData(qKey, previousEmployees); 
+    }
   };
 
   return (
@@ -983,8 +1309,8 @@ export default function ACRPage() {
                       </div>
                     )}
                   </div>
-                  <div className="space-y-1"><Label className="text-[10px] font-black text-[#405189] uppercase">From</Label><Input ref={fromDateRef} type="date" className="border-slate-200/50 h-10 bg-slate-50 border-none font-bold text-xs rounded-xl" value={acrFormData.from_date} onChange={(e) => setAcrFormData((p:any) => ({...p, from_date: e.target.value}))} onKeyDown={(e) => e.key === 'Enter' && jumpToField(toDateRef, null)} /></div>
-                  <div className="space-y-1"><Label className="text-[10px] font-black text-[#405189] uppercase">To</Label><Input ref={toDateRef} type="date" className="border-slate-200/50 h-10 bg-slate-50 border-none font-bold text-xs rounded-xl" value={acrFormData.to_date} onChange={(e) => setAcrFormData((p:any) => ({...p, to_date: e.target.value}))} onKeyDown={(e) => e.key === 'Enter' && jumpToField(gaInputRef, 'ga')} /></div>
+                  <div className="space-y-1"><Label className="text-[10px] font-black text-[#405189] uppercase">From</Label><Input ref={fromDateRef} type="date" className="border-slate-200/50 h-10 bg-slate-50 border-none font-bold text-xs rounded-xl" value={acrFormData.from_date || ''} onChange={(e) => setAcrFormData((p:any) => ({...p, from_date: e.target.value}))} onKeyDown={(e) => e.key === 'Enter' && jumpToField(toDateRef, null)} /></div>
+                  <div className="space-y-1"><Label className="text-[10px] font-black text-[#405189] uppercase">To</Label><Input ref={toDateRef} type="date" className="border-slate-200/50 h-10 bg-slate-50 border-none font-bold text-xs rounded-xl" value={acrFormData.to_date || ''} onChange={(e) => setAcrFormData((p:any) => ({...p, to_date: e.target.value}))} onKeyDown={(e) => e.key === 'Enter' && jumpToField(gaInputRef, 'ga')} /></div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1022,13 +1348,28 @@ export default function ACRPage() {
                   <div className="space-y-1 relative acr-nav-group">
                     <Label className="text-[10px] font-black text-[#405189] uppercase">Fitness (After 25Y)</Label>
                     <div className="relative">
-                      <Input ref={fitnessInputRef} readOnly className="border-slate-200/50 h-10 bg-slate-50 border-none font-bold text-xs rounded-xl uppercase cursor-pointer focus:ring-2 focus:ring-primary/20" value={FITNESS_OPTIONS.find(o => o.value === acrFormData.fitness_after_25_years)?.label || ''} onFocus={() => !isJumping.current && setActiveDropdown('fitness')} onKeyDown={(e) => handleDropdownKeyDown(e, FITNESS_OPTIONS, 'fitness_after_25_years', roSearchRef, 'ro')} />
+                      <Input ref={fitnessInputRef} readOnly className="border-slate-200/50 h-10 bg-slate-50 border-none font-bold text-xs rounded-xl uppercase cursor-pointer focus:ring-2 focus:ring-primary/20" value={FITNESS_OPTIONS.find(o => o.value === acrFormData.fitness_after_25_years)?.label || ''} onFocus={() => !isJumping.current && setActiveDropdown('fitness')} onKeyDown={(e) => handleDropdownKeyDown(e, FITNESS_OPTIONS, 'fitness_after_25_years', resultInputRef, 'result')} />
                       <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
                     </div>
                     {activeDropdown === 'fitness' && (
                       <div className="absolute w-full border rounded-xl shadow-2xl max-h-48 overflow-y-auto bg-white z-[100] border-slate-100 mt-1">
                         {FITNESS_OPTIONS.map((o: any, i: number) => (
-                          <div key={o.value} className={cn("p-2 cursor-pointer border-b last:border-0 text-[10px] font-bold uppercase", dropdownIdx === i ? "bg-primary text-white" : "hover:bg-slate-50")} onMouseDown={() => handleSelection('fitness_after_25_years', o.value, roSearchRef, 'ro')}>{o.label}</div>
+                          <div key={o.value} className={cn("p-2 cursor-pointer border-b last:border-0 text-[10px] font-bold uppercase", dropdownIdx === i ? "bg-primary text-white" : "hover:bg-slate-50")} onMouseDown={() => handleSelection('fitness_after_25_years', o.value, resultInputRef, 'result')}>{o.label}</div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {/* Result */}
+                  <div className="space-y-1 relative acr-nav-group">
+                    <Label className="text-[10px] font-black text-[#405189] uppercase">Result</Label>
+                    <div className="relative">
+                      <Input ref={resultInputRef} readOnly className="border-slate-200/50 h-10 bg-slate-50 border-none font-bold text-xs rounded-xl uppercase cursor-pointer focus:ring-2 focus:ring-primary/20" value={RESULT_OPTIONS.find(o => o.value === acrFormData.result)?.label || ''} onFocus={() => !isJumping.current && setActiveDropdown('result')} onKeyDown={(e) => handleDropdownKeyDown(e, RESULT_OPTIONS, 'result', roSearchRef, 'ro')} />
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+                    </div>
+                    {activeDropdown === 'result' && (
+                      <div className="absolute w-full border rounded-xl shadow-2xl max-h-48 overflow-y-auto bg-white z-[100] border-slate-100 mt-1">
+                        {RESULT_OPTIONS.map((o: any, i: number) => (
+                          <div key={o.value} className={cn("p-2 cursor-pointer border-b last:border-0 text-[10px] font-bold uppercase", dropdownIdx === i ? "bg-primary text-white" : "hover:bg-slate-50")} onMouseDown={() => handleSelection('result', o.value, roSearchRef, 'ro')}>{o.label}</div>
                         ))}
                       </div>
                     )}
@@ -1038,7 +1379,7 @@ export default function ACRPage() {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="space-y-1 relative acr-nav-group">
                     <Label className="text-[10px] font-black text-[#405189] uppercase">RO</Label>
-                    <Input ref={roSearchRef} placeholder="SEARCH RO..." className="border-slate-200/50 h-10 bg-slate-50 border-none font-bold text-[10px] rounded-xl uppercase" value={roSearch} onFocus={() => !isJumping.current && setActiveDropdown('ro')} onChange={(e) => { setRoSearch(e.target.value); if(!e.target.value) setSelectedRo(null); setRoIdx(0); }} onKeyDown={(e) => handleSearchKeyDown(e, roSearchEmps || [], roIdx, setRoIdx, selectRo)} />
+                    <Input ref={roSearchRef} placeholder="SEARCH RO..." className="border-slate-200/50 h-10 bg-slate-50 border-none font-bold text-[10px] rounded-xl uppercase" value={roSearch} onFocus={() => !isJumping.current && setActiveDropdown('ro')} onChange={(e) => { setRoSearch(e.target.value); setAcrFormData((p:any) => ({...p, ro_name: e.target.value})); if(!e.target.value) setSelectedRo(null); setRoIdx(0); }} onKeyDown={(e) => handleSearchKeyDown(e, roSearchEmps || [], roIdx, setRoIdx, selectRo, roDateRef)} />
                     {activeDropdown === 'ro' && roSearchEmps && roSearchEmps.length > 0 && !selectedRo && (
                       <div className="absolute w-full border rounded-xl shadow-2xl max-h-48 overflow-y-auto bg-white z-[100] border-slate-100 mt-1">
                         {roSearchEmps.map((e: any, i: number) => (
@@ -1047,10 +1388,24 @@ export default function ACRPage() {
                       </div>
                     )}
                   </div>
-                  <div className="space-y-1"><Label className="text-[10px] font-black text-[#405189] uppercase">RO Date</Label><Input ref={roDateRef} type="date" className="border-slate-200/50 h-10 bg-slate-50 border-none font-bold text-[10px] rounded-xl focus:ring-2 focus:ring-primary/20" value={acrFormData.ro_date} onChange={(e) => setAcrFormData((p:any) => ({...p, ro_date: e.target.value}))} onKeyDown={(e) => e.key === 'Enter' && jumpToField(coSearchRef, 'co')} /></div>
+                  <div className="space-y-1"><Label className="text-[10px] font-black text-[#405189] uppercase">RO Date</Label><Input ref={roDateRef} type="date" className="border-slate-200/50 h-10 bg-slate-50 border-none font-bold text-[10px] rounded-xl focus:ring-2 focus:ring-primary/20" value={acrFormData.ro_date || ''} onChange={(e) => setAcrFormData((p:any) => ({...p, ro_date: e.target.value}))} onKeyDown={(e) => e.key === 'Enter' && jumpToField(roRemarksRef, null)} /></div>
+                  <div className="md:col-span-2 space-y-1">
+                    <Label className="text-[10px] font-black text-[#405189] uppercase">RO Remarks</Label>
+                    <Input 
+                      ref={roRemarksRef} 
+                      className="border-slate-200/50 h-10 bg-slate-50 border-none font-bold text-xs uppercase rounded-xl focus:ring-2 focus:ring-primary/20" 
+                      placeholder="ENTER RO REMARKS..." 
+                      value={acrFormData.ro_remarks || ''} 
+                      onChange={(e) => setAcrFormData((p:any) => ({...p, ro_remarks: e.target.value}))} 
+                      onKeyDown={(e) => e.key === 'Enter' && jumpToField(coSearchRef, 'co')} 
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="space-y-1 relative acr-nav-group">
                     <Label className="text-[10px] font-black text-[#405189] uppercase">CO</Label>
-                    <Input ref={coSearchRef} placeholder="SEARCH CO..." className="border-slate-200/50 h-10 bg-slate-50 border-none font-bold text-[10px] rounded-xl uppercase" value={coSearch} onFocus={() => !isJumping.current && setActiveDropdown('co')} onChange={(e) => { setCoSearch(e.target.value); if(!e.target.value) setSelectedCo(null); setCoIdx(0); }} onKeyDown={(e) => handleSearchKeyDown(e, coSearchEmps || [], coIdx, setCoIdx, selectCo)} />
+                    <Input ref={coSearchRef} placeholder="SEARCH CO..." className="border-slate-200/50 h-10 bg-slate-50 border-none font-bold text-[10px] rounded-xl uppercase" value={coSearch} onFocus={() => !isJumping.current && setActiveDropdown('co')} onChange={(e) => { setCoSearch(e.target.value); setAcrFormData((p:any) => ({...p, co_name: e.target.value})); if(!e.target.value) setSelectedCo(null); setCoIdx(0); }} onKeyDown={(e) => handleSearchKeyDown(e, coSearchEmps || [], coIdx, setCoIdx, selectCo, coDateRef)} />
                     {activeDropdown === 'co' && coSearchEmps && coSearchEmps.length > 0 && !selectedCo && (
                       <div className="absolute w-full border rounded-xl shadow-2xl max-h-48 overflow-y-auto bg-white z-[100] border-slate-100 mt-1">
                         {coSearchEmps.map((e: any, i: number) => (
@@ -1059,33 +1414,15 @@ export default function ACRPage() {
                       </div>
                     )}
                   </div>
-                  <div className="space-y-1"><Label className="text-[10px] font-black text-[#405189] uppercase">CO Date</Label><Input ref={coDateRef} type="date" className="border-slate-200/50 h-10 bg-slate-50 border-none font-bold text-[10px] rounded-xl focus:ring-2 focus:ring-primary/20" value={acrFormData.co_date} onChange={(e) => setAcrFormData((p:any) => ({...p, co_date: e.target.value}))} onKeyDown={(e) => e.key === 'Enter' && jumpToField(resultInputRef, 'result')} /></div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  {/* Result */}
-                  <div className="space-y-1 relative acr-nav-group">
-                    <Label className="text-[10px] font-black text-[#405189] uppercase">Result</Label>
-                    <div className="relative">
-                      <Input ref={resultInputRef} readOnly className="border-slate-200/50 h-10 bg-slate-50 border-none font-bold text-xs rounded-xl uppercase cursor-pointer focus:ring-2 focus:ring-primary/20" value={RESULT_OPTIONS.find(o => o.value === acrFormData.result)?.label || ''} onFocus={() => !isJumping.current && setActiveDropdown('result')} onKeyDown={(e) => handleDropdownKeyDown(e, RESULT_OPTIONS, 'result', remarksRef, null)} />
-                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
-                    </div>
-                    {activeDropdown === 'result' && (
-                      <div className="absolute w-full border rounded-xl shadow-2xl max-h-48 overflow-y-auto bg-white z-[100] border-slate-100 mt-1">
-                        {RESULT_OPTIONS.map((o: any, i: number) => (
-                          <div key={o.value} className={cn("p-2 cursor-pointer border-b last:border-0 text-[10px] font-bold uppercase", dropdownIdx === i ? "bg-primary text-white" : "hover:bg-slate-50")} onMouseDown={() => handleSelection('result', o.value, remarksRef, null)}>{o.label}</div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <div className="md:col-span-3 space-y-1">
-                    <Label className="text-[10px] font-black text-[#405189] uppercase">Remarks</Label>
+                  <div className="space-y-1"><Label className="text-[10px] font-black text-[#405189] uppercase">CO Date</Label><Input ref={coDateRef} type="date" className="border-slate-200/50 h-10 bg-slate-50 border-none font-bold text-[10px] rounded-xl focus:ring-2 focus:ring-primary/20" value={acrFormData.co_date || ''} onChange={(e) => setAcrFormData((p:any) => ({...p, co_date: e.target.value}))} onKeyDown={(e) => e.key === 'Enter' && jumpToField(coRemarksRef, null)} /></div>
+                  <div className="md:col-span-2 space-y-1">
+                    <Label className="text-[10px] font-black text-[#405189] uppercase">CO Remarks</Label>
                     <Input 
-                      ref={remarksRef} 
+                      ref={coRemarksRef} 
                       className="border-slate-200/50 h-10 bg-slate-50 border-none font-bold text-xs uppercase rounded-xl focus:ring-2 focus:ring-primary/20" 
-                      placeholder="ENTER REMARKS..." 
-                      value={acrFormData.remarks} 
-                      onChange={(e) => setAcrFormData((p:any) => ({...p, remarks: e.target.value}))} 
+                      placeholder="ENTER CO REMARKS..." 
+                      value={acrFormData.co_remarks || ''} 
+                      onChange={(e) => setAcrFormData((p:any) => ({...p, co_remarks: e.target.value}))} 
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === 'Tab') {
                           saveBtnRef.current?.focus();
@@ -1104,7 +1441,7 @@ export default function ACRPage() {
                 {editingPeriodId && (
                   <Button variant="outline" className="h-12 px-8 text-xs font-black rounded-2xl uppercase tracking-widest border-slate-200" onClick={() => {
                     setEditingPeriodId(null);
-                    setAcrFormData((prev: any) => ({ ...prev, from_date: '', to_date: '', ga: '', promotion: '', remarks: '', fitness_after_25_years: '', ro_name: '', ro_date: '', co_name: '', co_date: '', result: '', status: 'Pending' }));
+                    setAcrFormData((prev: any) => ({ ...prev, from_date: '', to_date: '', ga: '', promotion: '', ro_remarks: '', co_remarks: '', fitness_after_25_years: '', ro_name: '', ro_date: '', co_name: '', co_date: '', result: '', status: 'Pending' }));
                   }}>Cancel</Button>
                 )}
               </div>
@@ -1125,11 +1462,11 @@ export default function ACRPage() {
                             <span className="text-lg font-black text-primary leading-none tabular-nums">{flatHistory.length}</span>
                             <span className="text-[7px] font-black text-slate-400 uppercase tracking-[0.2em] mt-0.5">Records</span>
                         </div>
-                        <Button variant="ghost" size="sm" className="h-9 px-4 text-[11px] font-black text-slate-600 uppercase rounded-lg flex items-center gap-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all" onClick={handleHistoryExportExcel}><FileDown className="h-4 w-4 text-emerald-600" /> Excel</Button>
+                        <Button variant="ghost" size="sm" className="h-9 px-4 text-[11px] font-black text-slate-600 uppercase rounded-lg flex items-center gap-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all" onClick={() => handleHistoryExport('excel')}><FileDown className="h-4 w-4 text-emerald-600" /> Excel</Button>
                         <div className="w-[1px] h-6 bg-slate-100" />
-                        <Button variant="ghost" size="sm" className="h-9 px-4 text-[11px] font-black text-slate-600 uppercase rounded-lg flex items-center gap-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all" onClick={handleHistoryExportPDF}><FileJson className="h-4 w-4 text-rose-600" /> PDF</Button>
+                        <Button variant="ghost" size="sm" className="h-9 px-4 text-[11px] font-black text-slate-600 uppercase rounded-lg flex items-center gap-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all" onClick={() => handleHistoryExport('pdf')}><FileJson className="h-4 w-4 text-rose-600" /> PDF</Button>
                         <div className="w-[1px] h-6 bg-slate-100" />
-                        <Button variant="ghost" size="sm" className="h-9 px-4 text-[11px] font-black text-slate-600 uppercase rounded-lg flex items-center gap-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all" onClick={handlePrint}><Printer className="h-4 w-4 text-blue-600" /> Print</Button>
+                        <Button variant="ghost" size="sm" className="h-9 px-4 text-[11px] font-black text-slate-600 uppercase rounded-lg flex items-center gap-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all" onClick={() => handleHistoryExport('print')}><Printer className="h-4 w-4 text-blue-600" /> Print</Button>
                     </div>
                   </div>
                   <Card className="border-none shadow-2xl bg-white rounded-3xl overflow-hidden min-h-[200px]">
@@ -1138,15 +1475,15 @@ export default function ACRPage() {
                             <TableHeader className="bg-[#405189]">
                                 <TableRow className="border-none hover:bg-white/5">
                                 <TableHead className="font-black text-white text-[9px] uppercase p-3 text-center">S.No</TableHead>
-                                <TableHead className="font-black text-white text-[9px] uppercase p-3 text-center">Year</TableHead>
-                                <TableHead className="font-black text-white text-[9px] uppercase p-3 text-center">From</TableHead>
-                                <TableHead className="font-black text-white text-[9px] uppercase p-3 text-center">To</TableHead>
-                                <TableHead className="font-black text-white text-[9px] uppercase p-3">GA</TableHead>
-                                <TableHead className="font-black text-white text-[9px] uppercase p-3">Promotion</TableHead>
-                                <TableHead className="font-black text-white text-[9px] uppercase p-3">Fitness</TableHead>
-                                <TableHead className="font-black text-white text-[9px] uppercase p-3">RO Name</TableHead>
-                                <TableHead className="font-black text-white text-[9px] uppercase p-3">CO Name</TableHead>
-                                <TableHead className="font-black text-white text-[9px] uppercase p-3">Result</TableHead>
+                                <TableHead className="font-black text-white text-[9px] uppercase p-3 text-center cursor-pointer hover:bg-[#405189] transition-colors" onClick={() => handleSort('year')}><div className="flex items-center justify-center gap-1">Year{sort.key === 'year' && <SortIcon column="year" />}</div></TableHead>
+                                <TableHead className="font-black text-white text-[9px] uppercase p-3 text-center cursor-pointer hover:bg-[#405189] transition-colors" onClick={() => handleSort('from')}><div className="flex items-center justify-center gap-1">From{sort.key === 'from' && <SortIcon column="from" />}</div></TableHead>
+                                <TableHead className="font-black text-white text-[9px] uppercase p-3 text-center cursor-pointer hover:bg-[#405189] transition-colors" onClick={() => handleSort('to')}><div className="flex items-center justify-center gap-1">To{sort.key === 'to' && <SortIcon column="to" />}</div></TableHead>
+                                <TableHead className="font-black text-white text-[9px] uppercase p-3 cursor-pointer hover:bg-[#405189] transition-colors" onClick={() => handleSort('ga')}><div className="flex items-center gap-1">GA{sort.key === 'ga' && <SortIcon column="ga" />}</div></TableHead>
+                                <TableHead className="font-black text-white text-[9px] uppercase p-3 cursor-pointer hover:bg-[#405189] transition-colors" onClick={() => handleSort('promotion')}><div className="flex items-center gap-1">Promotion{sort.key === 'promotion' && <SortIcon column="promotion" />}</div></TableHead>
+                                <TableHead className="font-black text-white text-[9px] uppercase p-3 cursor-pointer hover:bg-[#405189] transition-colors" onClick={() => handleSort('fitness_after_25_years')}><div className="flex items-center gap-1">Fitness{sort.key === 'fitness_after_25_years' && <SortIcon column="fitness_after_25_years" />}</div></TableHead>
+                                <TableHead className="font-black text-white text-[9px] uppercase p-3 cursor-pointer hover:bg-[#405189] transition-colors" onClick={() => handleSort('ro_name')}><div className="flex items-center gap-1">RO Name{sort.key === 'ro_name' && <SortIcon column="ro_name" />}</div></TableHead>
+                                <TableHead className="font-black text-white text-[9px] uppercase p-3 cursor-pointer hover:bg-[#405189] transition-colors" onClick={() => handleSort('co_name')}><div className="flex items-center gap-1">CO Name{sort.key === 'co_name' && <SortIcon column="co_name" />}</div></TableHead>
+                                <TableHead className="font-black text-white text-[9px] uppercase p-3 cursor-pointer hover:bg-[#405189] transition-colors" onClick={() => handleSort('result')}><div className="flex items-center gap-1">Result{sort.key === 'result' && <SortIcon column="result" />}</div></TableHead>
                                 <TableHead className="font-black text-white text-[9px] uppercase p-3 text-center">Duration</TableHead>
                                 <TableHead className="text-center text-white font-black text-[9px] uppercase p-3 sticky right-0 bg-[#405189]">Manage</TableHead>
                                 </TableRow>
@@ -1187,7 +1524,7 @@ export default function ACRPage() {
                                             <Button variant="ghost" size="sm" className="h-7 w-7 text-primary hover:bg-primary/10 p-0" onClick={() => startEdit(p.report, p)}>
                                                 <Edit2 className="h-3 w-3" />
                                             </Button>
-                                            <Button variant="ghost" size="sm" className="h-7 w-7 text-rose-300 hover:text-rose-600 transition-colors" onClick={() => deletePeriodMutation.mutate(p.id)}>
+                                            <Button variant="ghost" size="sm" className="h-7 w-7 text-rose-300 hover:text-rose-600 transition-colors" onClick={() => deletePeriod(p.id)}>
                                                 <Trash2 className="h-3 w-3" />
                                             </Button>
                                             </>
@@ -1232,18 +1569,19 @@ export default function ACRPage() {
 
 
                   <Card className="border-none shadow-sm bg-white overflow-visible rounded-xl border border-slate-100 no-print z-50">
-                    <div className="flex flex-wrap items-center divide-x divide-slate-100 p-0">
+                    <div className="flex bg-white p-2 rounded-2xl gap-3 shadow-sm border border-slate-100 flex-wrap">
+                      <div className="flex-1 min-w-[120px]"><MultiSelect label="Type" options={['Submitted', 'Remaining']} selected={historyTypeFilter === 'All' ? [] : [historyTypeFilter]} onChange={(vals) => setHistoryTypeFilter(vals[0] || 'All')} placeholder="Type" /></div>
                       <div className="flex-1 min-w-[120px]"><MultiSelect label="Year" options={availableYears} selected={historyYearFilter} onChange={(vals) => setHistoryYearFilter(vals)} placeholder="Year" /></div>
                       <div className="flex-1 min-w-[120px]"><MultiSelect label="GA" options={['Outstanding', 'Very Good', 'Good', 'Average', 'Below Average', 'Poor']} selected={historyGaFilter} onChange={(vals) => setHistoryGaFilter(vals)} placeholder="GA" /></div>
-                      <div className="flex-1 min-w-[120px]"><MultiSelect label="Promotion" options={['Recommended for accelerated Promotion', 'Fit for Promotion', 'Recently promoted', 'Assessment for the further promotion in premature', 'Not yet fit for promotion but likely to become fit in course of time', 'Unfit for further promotion', 'Has reached his ceiling']} selected={historyPromotionFilter} onChange={(vals) => setHistoryPromotionFilter(vals)} placeholder="Promotion" /></div>
-                      <div className="flex-1 min-w-[120px]"><MultiSelect label="Remarks" options={['Satisfactory', 'Not Satisfactory']} selected={historyRemarksFilter} onChange={(vals) => setHistoryRemarksFilter(vals)} placeholder="Remarks" /></div>
+                      <div className="flex-1 min-w-[150px]"><MultiSelect label="Promotion" options={PROMOTION_OPTIONS.map(o => o.value)} selected={historyPromotionFilter} onChange={(vals) => setHistoryPromotionFilter(vals)} placeholder="Promotion" /></div>
+                      <div className="flex-1 min-w-[120px]"><MultiSelect label="Result" options={['Satisfactory', 'Not Satisfactory']} selected={historyResultFilter} onChange={(vals) => setHistoryResultFilter(vals)} placeholder="Result" /></div>
                       <div className="flex-1 min-w-[120px]"><MultiSelect label="Fitness" options={['Fit', 'Unfit']} selected={historyFitnessFilter} onChange={(vals) => setHistoryFitnessFilter(vals)} placeholder="Fitness" /></div>
                       <div className="p-2 flex items-center justify-center">
-                        <Button variant="ghost" size="sm" className="h-[36px] px-4 w-full text-[10px] font-black text-rose-500 uppercase hover:bg-rose-50 border border-rose-100 rounded-lg" onClick={() => {
+                        <Button variant="ghost" size="sm" className="h-8 text-[10px] uppercase font-black text-slate-400 hover:text-slate-600" onClick={() => {
                           setHistoryYearFilter([]);
                           setHistoryGaFilter([]);
                           setHistoryPromotionFilter([]);
-                          setHistoryRemarksFilter([]);
+                          setHistoryResultFilter([]);
                           setHistoryFitnessFilter([]);
                           setHistorySearch('');
                           setHistoryTypeFilter('All');
@@ -1253,11 +1591,6 @@ export default function ACRPage() {
                   </Card>
 
                   <div className="flex items-center gap-3 no-print">
-                    <div className="flex bg-white p-1 rounded-xl shadow-sm border border-slate-100 h-12">
-                      <Button variant={historyTypeFilter === 'All' ? 'default' : 'ghost'} size="sm" onClick={() => setHistoryTypeFilter('All')} className="h-full px-6 font-bold text-[11px] uppercase rounded-lg">All</Button>
-                      <Button variant={historyTypeFilter === 'Submitted' ? 'default' : 'ghost'} size="sm" onClick={() => setHistoryTypeFilter('Submitted')} className="h-full px-6 font-bold text-[11px] uppercase rounded-lg">Submitted</Button>
-                      <Button variant={historyTypeFilter === 'Missing' ? 'default' : 'ghost'} size="sm" onClick={() => setHistoryTypeFilter('Missing')} className="h-full px-6 font-bold text-[11px] uppercase rounded-lg">Missing</Button>
-                    </div>
                     <div className="relative group flex-1 h-12">
                       <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300 group-focus-within:text-primary transition-colors" />
                       <Input placeholder="SEARCH HISTORY..." className="border-slate-200/50 h-12 pl-12 bg-white border-none shadow-sm text-[16px] font-bold uppercase tracking-tight placeholder:text-slate-200 focus-visible:ring-1 focus-visible:ring-primary rounded-xl transition-all" value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} />
@@ -1267,35 +1600,36 @@ export default function ACRPage() {
                             <span className="text-lg font-black text-primary leading-none tabular-nums">{flatHistory.length}</span>
                             <span className="text-[7px] font-black text-slate-400 uppercase tracking-[0.2em] mt-0.5">Records</span>
                         </div>
-                        <Button variant="ghost" size="sm" className="h-9 px-4 text-[11px] font-black text-slate-600 uppercase rounded-lg flex items-center gap-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all" onClick={handleHistoryExportExcel}><FileDown className="h-4 w-4 text-emerald-600" /> Excel</Button>
+                        <Button variant="ghost" size="sm" className="h-9 px-4 text-[11px] font-black text-slate-600 uppercase rounded-lg flex items-center gap-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all" onClick={() => handleHistoryExport('excel')}><FileDown className="h-4 w-4 text-emerald-600" /> Excel</Button>
                         <div className="w-[1px] h-6 bg-slate-100" />
-                        <Button variant="ghost" size="sm" className="h-9 px-4 text-[11px] font-black text-slate-600 uppercase rounded-lg flex items-center gap-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all" onClick={handleHistoryExportPDF}><FileJson className="h-4 w-4 text-rose-600" /> PDF</Button>
+                        <Button variant="ghost" size="sm" className="h-9 px-4 text-[11px] font-black text-slate-600 uppercase rounded-lg flex items-center gap-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all" onClick={() => handleHistoryExport('pdf')}><FileJson className="h-4 w-4 text-rose-600" /> PDF</Button>
                         <div className="w-[1px] h-6 bg-slate-100" />
-                        <Button variant="ghost" size="sm" className="h-9 px-4 text-[11px] font-black text-slate-600 uppercase rounded-lg flex items-center gap-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all" onClick={handlePrint}><Printer className="h-4 w-4 text-blue-600" /> Print</Button>
-                        </div>
-                        </div>
-                        </div>
+                        <Button variant="ghost" size="sm" className="h-9 px-4 text-[11px] font-black text-slate-600 uppercase rounded-lg flex items-center gap-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all" onClick={() => handleHistoryExport('print')}><Printer className="h-4 w-4 text-blue-600" /> Print</Button>
+                    </div>
+                    </div>
+                  </div>
+                  
 
-                        <Card className="border-none shadow-2xl bg-white rounded-3xl overflow-hidden min-h-[300px]">
+                <Card className="border-none shadow-2xl bg-white rounded-3xl overflow-hidden min-h-[300px]">
               <div className="w-full overflow-x-auto">
                 <Table className="w-full whitespace-nowrap">
                   <TableHeader className="bg-[#405189]">
-                    <TableRow className="border-none hover:bg-white/5">
+                      <TableRow className="border-none hover:bg-white/5">
                       <TableHead className="font-black text-white text-[9px] uppercase p-3 text-center">S.No</TableHead>
-                      <TableHead className="font-black text-white text-[9px] uppercase p-3">Code</TableHead>
-                      <TableHead className="font-black text-white text-[9px] uppercase p-3">Name</TableHead>
-                      <TableHead className="font-black text-white text-[9px] uppercase p-3">BPS</TableHead>
-                      <TableHead className="font-black text-white text-[9px] uppercase p-3">Designation</TableHead>
-                      <TableHead className="font-black text-white text-[9px] uppercase p-3">Office / Branch</TableHead>
-                      <TableHead className="font-black text-white text-[9px] uppercase p-3 text-center">Year</TableHead>
-                      <TableHead className="font-black text-white text-[9px] uppercase p-3 text-center">From</TableHead>
-                      <TableHead className="font-black text-white text-[9px] uppercase p-3 text-center">To</TableHead>
-                      <TableHead className="font-black text-white text-[9px] uppercase p-3">GA</TableHead>
-                      <TableHead className="font-black text-white text-[9px] uppercase p-3">Promotion</TableHead>
-                      <TableHead className="font-black text-white text-[9px] uppercase p-3">Fitness</TableHead>
-                      <TableHead className="font-black text-white text-[9px] uppercase p-3">RO Name</TableHead>
-                      <TableHead className="font-black text-white text-[9px] uppercase p-3">CO Name</TableHead>
-                      <TableHead className="font-black text-white text-[9px] uppercase p-3">Result</TableHead>
+                      <TableHead className="font-black text-white text-[9px] uppercase p-3 cursor-pointer hover:bg-[#405189] transition-colors" onClick={() => handleSort('code')}><div className="flex items-center gap-1">Code{sort.key === 'code' && <SortIcon column="code" />}</div></TableHead>
+                      <TableHead className="font-black text-white text-[9px] uppercase p-3 cursor-pointer hover:bg-[#405189] transition-colors" onClick={() => handleSort('name')}><div className="flex items-center gap-1">Name{sort.key === 'name' && <SortIcon column="name" />}</div></TableHead>
+                      <TableHead className="font-black text-white text-[9px] uppercase p-3 cursor-pointer hover:bg-[#405189] transition-colors" onClick={() => handleSort('bs')}><div className="flex items-center gap-1">BPS{sort.key === 'bs' && <SortIcon column="bs" />}</div></TableHead>
+                      <TableHead className="font-black text-white text-[9px] uppercase p-3 cursor-pointer hover:bg-[#405189] transition-colors" onClick={() => handleSort('post_name')}><div className="flex items-center gap-1">Designation{sort.key === 'post_name' && <SortIcon column="post_name" />}</div></TableHead>
+                      <TableHead className="font-black text-white text-[9px] uppercase p-3 cursor-pointer hover:bg-[#405189] transition-colors" onClick={() => handleSort('branch_office')}><div className="flex items-center gap-1">Office / Branch{sort.key === 'branch_office' && <SortIcon column="branch_office" />}</div></TableHead>
+                      <TableHead className="font-black text-white text-[9px] uppercase p-3 text-center cursor-pointer hover:bg-[#405189] transition-colors" onClick={() => handleSort('year')}><div className="flex items-center justify-center gap-1">Year{sort.key === 'year' && <SortIcon column="year" />}</div></TableHead>
+                      <TableHead className="font-black text-white text-[9px] uppercase p-3 text-center cursor-pointer hover:bg-[#405189] transition-colors" onClick={() => handleSort('from')}><div className="flex items-center justify-center gap-1">From{sort.key === 'from' && <SortIcon column="from" />}</div></TableHead>
+                      <TableHead className="font-black text-white text-[9px] uppercase p-3 text-center cursor-pointer hover:bg-[#405189] transition-colors" onClick={() => handleSort('to')}><div className="flex items-center justify-center gap-1">To{sort.key === 'to' && <SortIcon column="to" />}</div></TableHead>
+                      <TableHead className="font-black text-white text-[9px] uppercase p-3 cursor-pointer hover:bg-[#405189] transition-colors" onClick={() => handleSort('ga')}><div className="flex items-center gap-1">GA{sort.key === 'ga' && <SortIcon column="ga" />}</div></TableHead>
+                      <TableHead className="font-black text-white text-[9px] uppercase p-3 cursor-pointer hover:bg-[#405189] transition-colors" onClick={() => handleSort('promotion')}><div className="flex items-center gap-1">Promotion{sort.key === 'promotion' && <SortIcon column="promotion" />}</div></TableHead>
+                      <TableHead className="font-black text-white text-[9px] uppercase p-3 cursor-pointer hover:bg-[#405189] transition-colors" onClick={() => handleSort('fitness_after_25_years')}><div className="flex items-center gap-1">Fitness{sort.key === 'fitness_after_25_years' && <SortIcon column="fitness_after_25_years" />}</div></TableHead>
+                      <TableHead className="font-black text-white text-[9px] uppercase p-3 cursor-pointer hover:bg-[#405189] transition-colors" onClick={() => handleSort('ro_name')}><div className="flex items-center gap-1">RO Name{sort.key === 'ro_name' && <SortIcon column="ro_name" />}</div></TableHead>
+                      <TableHead className="font-black text-white text-[9px] uppercase p-3 cursor-pointer hover:bg-[#405189] transition-colors" onClick={() => handleSort('co_name')}><div className="flex items-center gap-1">CO Name{sort.key === 'co_name' && <SortIcon column="co_name" />}</div></TableHead>
+                      <TableHead className="font-black text-white text-[9px] uppercase p-3 cursor-pointer hover:bg-[#405189] transition-colors" onClick={() => handleSort('result')}><div className="flex items-center gap-1">Result{sort.key === 'result' && <SortIcon column="result" />}</div></TableHead>
                       <TableHead className="font-black text-white text-[9px] uppercase p-3 text-center">Duration</TableHead>
                       <TableHead className="text-center text-white font-black text-[9px] uppercase p-3 sticky right-0 bg-[#405189]">Manage</TableHead>
                     </TableRow>
@@ -1341,7 +1675,7 @@ export default function ACRPage() {
                                   <Button variant="ghost" size="sm" className="h-7 w-7 text-primary hover:bg-primary/10 p-0" onClick={() => startEdit(p.report, p)}>
                                     <Edit2 className="h-3 w-3" />
                                   </Button>
-                                  <Button variant="ghost" size="sm" className="h-7 w-7 text-rose-300 hover:text-rose-600 transition-colors" onClick={() => deletePeriodMutation.mutate(p.id)}>
+                                  <Button variant="ghost" size="sm" className="h-7 w-7 text-rose-300 hover:text-rose-600 transition-colors" onClick={() => deletePeriod(p.id)}>
                                     <Trash2 className="h-3 w-3" />
                                   </Button>
                                 </>
@@ -1374,14 +1708,14 @@ export default function ACRPage() {
                 <div className="flex-1 min-w-[150px]"><MultiSelect label="Year" options={availableYears} selected={tabYearsFilter} onChange={(vals) => setTabYearsFilter(vals)} placeholder="Year" /></div>
                 <div className="flex-1 min-w-[150px]"><MultiSelect label="Status" options={['Completed', 'Incomplete']} selected={completionFilter} onChange={(vals) => setCompletionFilter(vals)} placeholder="Status" /></div>
                 {category === 'Officer' && (
-                    <div className="flex-1 min-w-[150px]"><MultiSelect label="Periods" options={['Pending', 'Sent']} selected={statusFilter} onChange={(vals) => setStatusFilter(vals)} placeholder="Periods" /></div>
+                    <div className="flex-1 min-w-[150px]"><MultiSelect label="Periods" options={['Pending', 'Sent to ECP']} selected={statusFilter} onChange={(vals) => setStatusFilter(vals)} placeholder="Periods" /></div>
                 )}
                 <div className="flex-1 min-w-[150px]"><MultiSelect label="Designation" options={Array.from(new Set(employees?.map((e: any) => e.post_name).filter(Boolean)))} selected={designationFilter} onChange={(vals) => setDesignationFilter(vals)} placeholder="Designation" /></div>
                 {category === 'Official' && (
                 <>
                     <div className="flex-1 min-w-[120px]"><MultiSelect label="GA" options={['Outstanding', 'Very Good', 'Good', 'Average', 'Below Average', 'Poor']} selected={gaFilter} onChange={(vals) => setGaFilter(vals)} placeholder="GA" /></div>
-                    <div className="flex-1 min-w-[120px]"><MultiSelect label="Promotion" options={['Recommended for accelerated Promotion', 'Fit for Promotion', 'Recently promoted', 'Assessment for the further promotion in premature', 'Not yet fit for promotion but likely to become fit in course of time', 'Unfit for further promotion', 'Has reached his ceiling']} selected={promotionFilter} onChange={(vals) => setPromotionFilter(vals)} placeholder="Promotion" /></div>
-                    <div className="flex-1 min-w-[120px]"><MultiSelect label="Remarks" options={['Satisfactory', 'Not Satisfactory']} selected={remarksFilter} onChange={(vals) => setRemarksFilter(vals)} placeholder="Remarks" /></div>
+                    <div className="flex-1 min-w-[150px]"><MultiSelect label="Promotion" options={PROMOTION_OPTIONS.map(o => o.value)} selected={promotionFilter} onChange={(vals) => setPromotionFilter(vals)} placeholder="Promotion" /></div>
+                    <div className="flex-1 min-w-[120px]"><MultiSelect label="Result" options={['Satisfactory', 'Not Satisfactory']} selected={resultFilter} onChange={(vals) => setResultFilter(vals)} placeholder="Result" /></div>
                     <div className="flex-1 min-w-[120px]"><MultiSelect label="Fitness" options={['Fit', 'Unfit']} selected={fitnessFilter} onChange={(vals) => setFitnessFilter(vals)} placeholder="Fitness" /></div>
                 </>
                 )}
@@ -1401,25 +1735,37 @@ export default function ACRPage() {
                     <span className="text-lg font-black text-primary leading-none tabular-nums">{totalCount}</span>
                     <span className="text-[7px] font-black text-slate-400 uppercase tracking-[0.2em] mt-0.5">Records</span>
                 </div>
-                <Button variant="ghost" size="sm" className="h-9 px-4 text-[11px] font-black text-slate-600 uppercase rounded-lg flex items-center gap-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all" onClick={handleExportExcel}><FileDown className="h-4 w-4 text-emerald-600" /> Excel</Button>
+                <Button variant="ghost" size="sm" className="h-9 px-4 text-[11px] font-black text-slate-600 uppercase rounded-lg flex items-center gap-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all" onClick={() => {
+                    if (category === 'Official') {
+                        const wantsComplete = window.confirm("Do you want to export COMPLETE DATA (including Reporting & Counter Signing Officers)?\n\nClick 'OK' for Complete Data.\nClick 'Cancel' for Standard Table Data.");
+                        handleExport('excel', wantsComplete);
+                    } else {
+                        handleExport('excel');
+                    }
+                }}><FileDown className="h-4 w-4 text-emerald-600" /> Excel</Button>
                 <div className="w-[1px] h-6 bg-slate-100" />
-                <Button variant="ghost" size="sm" className="h-9 px-4 text-[11px] font-black text-slate-600 uppercase rounded-lg flex items-center gap-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all" onClick={handleExportPDF}><FileJson className="h-4 w-4 text-rose-600" /> PDF</Button>
+                <Button variant="ghost" size="sm" className="h-9 px-4 text-[11px] font-black text-slate-600 uppercase rounded-lg flex items-center gap-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all" onClick={() => handleExport('pdf')}><FileJson className="h-4 w-4 text-rose-600" /> PDF</Button>
                 <div className="w-[1px] h-6 bg-slate-100" />
-                <Button variant="ghost" size="sm" className="h-9 px-4 text-[11px] font-black text-slate-600 uppercase rounded-lg flex items-center gap-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all" onClick={handlePrint}><Printer className="h-4 w-4 text-blue-600" /> Print</Button>
+                <Button variant="ghost" size="sm" className="h-9 px-4 text-[11px] font-black text-slate-600 uppercase rounded-lg flex items-center gap-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all" onClick={() => handleExport('print')}><Printer className="h-4 w-4 text-blue-600" /> Print</Button>
             </div>
           </div>
 
-          <Card className="border-none shadow-2xl overflow-hidden bg-white rounded-3xl border border-slate-100">
-            <div className="w-full overflow-x-auto">
-              <Table className="w-full table-fixed">
-                <TableHeader className="bg-[#405189]">
+          <Card className="border-none shadow-2xl overflow-hidden bg-white rounded-3xl border border-slate-100 min-h-[500px] print-area print:!shadow-none print:!border-none print:!rounded-none">
+              <div className="hidden print:block print-header w-full">
+                 <h1>{generateDynamicTitle()}</h1>
+                 <p>Total Records: {employees?.length}</p>
+              </div>
+              <div className="w-full overflow-x-auto">
+                <Table className="w-full table-fixed">
+                  <TableHeader className="bg-[#405189]">
                   <TableRow className="hover:bg-[#405189] border-none h-14">
                     {(category === 'Officer' ? OFFICERS_COLUMNS : OFFICIALS_COLUMNS).map((col) => {
                       const sortKeyMap: any = { 'Name': 'name', 'Designation': 'post_name', 'BPS': 'bs', 'Office': 'branch_office' };
                       const sortKey = sortKeyMap[col.name];
+                      const isCentered = ['GA', 'Promotion', 'Fitness', 'Result', 'Remarks', 'Duration', 'Status', 'Actions'].includes(col.name);
                       return (
-                        <TableHead key={col.name} className={`${col.width} text-white font-black text-[12px] uppercase p-2 ${['Duration', 'Status', 'Actions'].includes(col.name) ? 'text-center' : ''} ${sortKey ? 'cursor-pointer hover:bg-[#405189] transition-colors' : ''}`} onClick={() => sortKey && handleSort(sortKey)}>
-                          <div className={`flex items-center ${['Duration', 'Status', 'Actions'].includes(col.name) ? 'justify-center' : ''}`}>
+                        <TableHead key={col.name} className={`${col.width} text-white font-black text-[12px] uppercase p-2 ${isCentered ? 'text-center' : ''} ${sortKey ? 'cursor-pointer hover:bg-[#405189] transition-colors' : ''}`} onClick={() => sortKey && handleSort(sortKey)}>
+                          <div className={`flex items-center ${isCentered ? 'justify-center' : ''}`}>
                             {col.name} {sortKey && <SortIcon column={sortKey} />}
                           </div>
                         </TableHead>
@@ -1437,26 +1783,32 @@ export default function ACRPage() {
                         
                         let displayRows: any[] = [];
                         let allSubmitted: any[] = [];
+                        let allGaps: any[] = [];
 
                         yearsToProcess.forEach((y: string) => {
                             if (joiningYear > 0 && parseInt(y) < joiningYear) return;
 
                             const r = emp.reports?.find((rep: any) => rep.year === y);
                             let submittedForYear = [];
+                            let isManuallyCompleted = false;
                             if (r) {
-                                submittedForYear = r.periods?.map((p: any) => ({...p, reportId: r.id, isManuallyCompleted: r.is_manually_completed, type: 'Submitted', year: y})) || [];
+                                isManuallyCompleted = r.is_manually_completed;
+                                submittedForYear = r.periods?.map((p: any) => ({...p, reportId: r.id, isManuallyCompleted: r.is_manually_completed, type: 'Submitted', year: y, report: r, emp: emp})) || [];
                             }
                             
-                            const gapsForYear = calculateGaps(y, submittedForYear, emp.joining_date).map((g: any, idx: number) => ({ id: `gap-${emp.id}-${y}-${idx}`, year: y, from: g.start.toISOString().split('T')[0], to: g.end.toISOString().split('T')[0], type: 'Remaining', status: 'Pending' }));
+                            const gapsForYear = isManuallyCompleted 
+                                ? [] 
+                                : calculateGaps(y, submittedForYear, emp.joining_date).map((g: any, idx: number) => ({ id: `gap-${emp.id}-${y}-${idx}`, year: y, from: g.start.toISOString().split('T')[0], to: g.end.toISOString().split('T')[0], type: 'Remaining', status: 'Pending' }));
                             
                             displayRows.push(...submittedForYear, ...gapsForYear);
                             allSubmitted.push(...submittedForYear);
+                            allGaps.push(...gapsForYear);
                         });
 
                         if (displayRows.length === 0) return null;
 
                         displayRows.sort((a, b) => new Date(a.from).getTime() - new Date(b.from).getTime());
-                        const total = getSumTenure(allSubmitted);
+                        const total = getSumTenure(allSubmitted, allGaps);
                         return (
                       <React.Fragment key={emp.id}>
                         {displayRows.length === 0 ? (
@@ -1492,28 +1844,28 @@ export default function ACRPage() {
                                     {category === 'Official' && (
                                       <>
                                         {/* GA Column */}
-                                        <TableCell className="p-1">{p.type === 'Submitted' ? (<select className="h-7 border border-slate-200 rounded px-1 text-[10px] font-bold uppercase w-full bg-white focus:border-primary" value={p.ga ? String(p.ga) : ''} onChange={(e) => updatePeriodField(p.id, 'ga', e.target.value)}><option value="">Select</option>{['Outstanding', 'Very Good', 'Good', 'Average', 'Below Average', 'Poor'].map(o => <option key={o} value={o}>{o}</option>)}</select>) : <span className="text-[10px] text-slate-300 font-bold px-2 italic uppercase">Missing</span>}</TableCell>
+                                        <TableCell className="p-1 text-center align-middle">{p.type === 'Submitted' ? <div className={cn("mx-auto px-2 py-1.5 font-black rounded-md text-[9px] uppercase max-w-[120px] truncate text-center shadow-sm border", p.result === 'Not Satisfactory' ? "bg-rose-50 border-rose-100 text-rose-700" : "bg-emerald-50 border-emerald-100 text-emerald-700")} title={p.ga}>{p.ga || "-"}</div> : <span className="text-[10px] text-slate-300 font-bold px-2 italic uppercase">Missing</span>}</TableCell>
                                         
                                         {/* Promotion Column */}
-                                        <TableCell className="p-1">{p.type === 'Submitted' ? (<select className="h-7 border border-slate-200 rounded px-1 text-[10px] font-bold uppercase w-full bg-white focus:border-primary" value={p.promotion ? String(p.promotion) : ''} onChange={(e) => updatePeriodField(p.id, 'promotion', e.target.value)}><option value="">Select</option>{['Recommended for accelerated Promotion', 'Fit for Promotion', 'Recently promoted', 'Assessment for the further promotion in premature', 'Not yet fit for promotion but likely to become fit in course of time', 'Unfit for further promotion', 'Has reached his ceiling'].map(o => <option key={o} value={o}>{o}</option>)}</select>) : <span className="text-[10px] text-slate-300 font-bold px-2 italic uppercase">Missing</span>}</TableCell>
+                                        <TableCell className="p-1 text-center align-middle">{p.type === 'Submitted' ? <div className={cn("mx-auto px-2 py-1.5 font-black rounded-md text-[9px] uppercase max-w-[150px] truncate text-center shadow-sm border", p.result === 'Not Satisfactory' ? "bg-rose-50 border-rose-100 text-rose-700" : "bg-emerald-50 border-emerald-100 text-emerald-700")} title={p.promotion}>{p.promotion || "-"}</div> : <span className="text-[10px] text-slate-300 font-bold px-2 italic uppercase">Missing</span>}</TableCell>
                                         
                                         {/* Fitness Column */}
-                                        <TableCell className="p-1">{p.type === 'Submitted' ? (<select className="h-7 border border-slate-200 rounded px-1 text-[10px] font-bold uppercase w-full bg-white focus:border-primary" value={p.fitness_after_25_years ? String(p.fitness_after_25_years) : ''} onChange={(e) => updatePeriodField(p.id, 'fitness_after_25_years', e.target.value)}><option value="">Select</option>{['Fit', 'Unfit'].map(o => <option key={o} value={o}>{o}</option>)}</select>) : <span className="text-[10px] text-slate-300 font-bold px-2 italic uppercase">Missing</span>}</TableCell>
+                                        <TableCell className="p-1 text-center align-middle">{p.type === 'Submitted' ? <div className={cn("mx-auto px-2 py-1.5 font-black rounded-md text-[9px] uppercase max-w-[120px] truncate text-center shadow-sm border", p.result === 'Not Satisfactory' ? "bg-rose-50 border-rose-100 text-rose-700" : "bg-emerald-50 border-emerald-100 text-emerald-700")} title={p.fitness_after_25_years}>{p.fitness_after_25_years || "-"}</div> : <span className="text-[10px] text-slate-300 font-bold px-2 italic uppercase">Missing</span>}</TableCell>
                                         
-                                        {/* Remarks Column */}
-                                        <TableCell className="p-1">{p.type === 'Submitted' ? (<select className="h-7 border border-slate-200 rounded px-1 text-[10px] font-bold uppercase w-full bg-white focus:border-primary" value={p.remarks ? String(p.remarks) : ''} onChange={(e) => updatePeriodField(p.id, 'remarks', e.target.value)}> <option value="">Select</option>{['Satisfactory', 'Not Satisfactory'].map(o => <option key={o} value={o}>{o}</option>)}</select>) : <span className="text-[10px] text-slate-300 font-bold px-2 italic uppercase">Missing</span>}</TableCell>
+                                        {/* Result Column */}
+                                        <TableCell className="p-1 text-center align-middle">{p.type === 'Submitted' ? <div className={cn("mx-auto px-2 py-1.5 font-black rounded-md text-[9px] uppercase max-w-[120px] truncate text-center shadow-sm border", p.result === 'Not Satisfactory' ? "bg-rose-50 border-rose-100 text-rose-700" : "bg-emerald-50 border-emerald-100 text-emerald-700")} title={p.result}>{p.result || "-"}</div> : <span className="text-[10px] text-slate-300 font-bold px-2 italic uppercase">Missing</span>}</TableCell>
                                       </>
                                     )}
                                     <TableCell className="text-[11px] text-center text-slate-700 font-black italic">{formatTenure(p.from, p.to)}</TableCell>
                                     {category === 'Officer' && (
-                                        <TableCell className="p-1"><div className="flex justify-center">{p.type === 'Submitted' ? (<select className="h-9 border border-slate-200 rounded-lg text-[11px] font-bold uppercase w-32 text-center bg-white focus:border-primary" value={p.status ? String(p.status) : 'Pending'} onChange={(e) => updatePeriodField(p.id, 'status', e.target.value)}><option value="Pending">Pending</option><option value="Sent">Sent</option></select>) : <span className="text-[10px] text-slate-300 font-black uppercase italic tracking-tighter">Missing Record</span>}</div></TableCell>
+                                        <TableCell className="p-1"><div className="flex justify-center">{p.type === 'Submitted' ? (<select className="h-9 border border-slate-200 rounded-lg text-[11px] font-bold uppercase w-32 text-center bg-white focus:border-primary" value={p.status === 'Sent' ? 'Sent to ECP' : (p.status || 'Pending')} onChange={(e) => updatePeriodField(p.id, 'status', e.target.value)}><option value="Pending">Pending</option><option value="Sent to ECP">Sent to ECP</option></select>) : <span className="text-[10px] text-slate-300 font-black uppercase italic tracking-tighter">Missing Record</span>}</div></TableCell>
                                     )}
                                     <TableCell className="flex justify-center items-center gap-1 py-4 align-middle">
                                         {p.type === 'Submitted' ? (
                                             <>
-                                                <input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary" checked={p.isManuallyCompleted} onChange={() => toggleReportCompletion(p.reportId)} />
-                                                <button className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-8 w-8 text-primary hover:bg-primary/10 p-0")} onClick={() => startAddMissing({ year: p.year, from: '', to: '' }, emp)}><Plus className="h-4 w-4" /></button>
-                                                <Button variant="ghost" size="sm" className="text-rose-500 hover:bg-rose-50 hover:text-rose-600 h-8 w-8 p-0" onClick={() => deletePeriod(p.id)}><Trash2 className="h-4 w-4" /></Button>
+                                                <input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary" checked={p.isManuallyCompleted} onChange={() => toggleReportCompletion(p.reportId)} title="Mark Complete" />
+                                                <Button variant="ghost" size="sm" className="h-8 w-8 text-primary hover:bg-primary/10 p-0" onClick={() => startEdit(p.report, p)} title="Edit Period"><Edit2 className="h-4 w-4" /></Button>
+                                                <Button variant="ghost" size="sm" className="text-rose-500 hover:bg-rose-50 hover:text-rose-600 h-8 w-8 p-0" onClick={() => deletePeriod(p.id)} title="Delete Period"><Trash2 className="h-4 w-4" /></Button>
                                             </>
                                         ) : (
                                             <button className="h-8 px-2 text-[8px] font-black uppercase rounded border border-rose-200 text-rose-500 hover:bg-rose-50 tracking-tighter" onClick={() => startAddMissing(p, emp)}>Add Missing</button>
@@ -1563,6 +1915,41 @@ export default function ACRPage() {
           )}
         </TabsContent>
       </Tabs>
+
+      <Dialog open={officerModalOpen} onOpenChange={setOfficerModalOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black uppercase text-primary tracking-tight">Add Officer Period</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Officer</label>
+              <Input value={officerModalData.emp?.name || ''} disabled className="font-bold bg-slate-50" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">From Date</label>
+                <Input type="date" value={officerModalData.from_date} onChange={e => setOfficerModalData({...officerModalData, from_date: e.target.value})} className="font-bold" />
+              </div>
+              <div className="grid gap-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">To Date</label>
+                <Input type="date" value={officerModalData.to_date} onChange={e => setOfficerModalData({...officerModalData, to_date: e.target.value})} className="font-bold" />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Status</label>
+              <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-bold uppercase ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" value={officerModalData.status === 'Sent' ? 'Sent to ECP' : (officerModalData.status || 'Pending')} onChange={e => setOfficerModalData({...officerModalData, status: e.target.value})}>
+                <option value="Pending">Pending</option>
+                <option value="Sent to ECP">Sent to ECP</option>
+              </select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOfficerModalOpen(false)}>Cancel</Button>
+            <Button className="bg-primary text-white font-black uppercase tracking-widest" onClick={handleOfficerModalSave}>Save Period</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

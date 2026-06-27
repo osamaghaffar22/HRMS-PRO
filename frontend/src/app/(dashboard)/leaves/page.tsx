@@ -168,27 +168,70 @@ export default function LeavesPage() {
     });
   };
 
-  const handleExport = (type: 'excel' | 'pdf') => {
+  const generateDynamicTitle = () => {
+      let subject = "Leave Management Report";
+      let parts = [];
+      if (!statusFilter.includes('all')) parts.push(`- ${statusFilter.join(', ')} Status`);
+      if (empSearch) parts.push(`matching "${empSearch}"`);
+      return `${subject} ${parts.join(' ')}`.trim();
+  };
+
+  const handleExport = async (type: 'excel' | 'pdf' | 'print') => {
     const dataToExport = activeRecords;
     if (dataToExport.length === 0) { alert("No data to export"); return; }
+    
+    const dynamicTitle = generateDynamicTitle();
+
     if (type === 'excel') {
-        const rows = dataToExport.map((r, i) => ({
-            'S.No': i + 1, 'Name': r.employee_name, 'Designation': r.employee_post, 'BPS': r.employee_bs,
-            'From': r.from_date, 'To': r.to_date, 'Days': r.total_days, 'Status': r.status, 'Remarks': r.remarks
+        const rows = dataToExport.map((r: any, i: number) => ({
+            'S.No': i + 1, 'Name': r.employee_name || '', 'Designation': r.employee_post || '', 'BPS': r.employee_bs || '',
+            'From': r.from_date || '', 'To': r.to_date || '', 'Days': r.total_days || '', 'Status': r.status || '', 'Remarks': r.remarks || ''
         }));
-        const ws = XLSX.utils.json_to_sheet(rows);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Leaves_Report");
-        XLSX.writeFile(wb, `Leaves_Report_${new Date().getTime()}.xlsx`);
+        try {
+            const response = await api.post('/api/export/excel-generic', {
+                title: dynamicTitle,
+                data: rows
+            }, { responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${dynamicTitle.replace(/[^a-z0-9]/gi, '_')}.xlsx`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Excel export failed', error);
+        }
     } else {
-        const doc = new jsPDF('landscape', 'pt', 'a4');
-        doc.text(`Leave Management Report`, 40, 40);
+        const jsPDF = (await import('jspdf')).default;
+        const autoTable = (await import('jspdf-autotable')).default;
+        
+        const doc = new jsPDF('landscape');
+        doc.setFontSize(16);
+        doc.text(dynamicTitle, 14, 15);
+        
+        const tableData = dataToExport.map((r: any, i: number) => [
+            i + 1, r.employee_name || '', r.employee_post || '', r.employee_bs || '',
+            r.from_date || '', r.to_date || '', r.total_days || '', r.status || '', r.remarks || ''
+        ]);
+        
         autoTable(doc, {
-            startY: 60,
+            startY: 20,
             head: [['#', 'Name', 'Designation', 'BPS', 'From', 'To', 'Days', 'Status', 'Remarks']],
-            body: dataToExport.map((r, i) => [i + 1, r.employee_name, r.employee_post, r.employee_bs, r.from_date, r.to_date, r.total_days, r.status, r.remarks]),
+            body: tableData,
+            theme: 'grid',
+            headStyles: { halign: 'center', valign: 'middle', fillColor: [64, 81, 137], textColor: [255, 255, 255], fontStyle: 'bold' },
+            bodyStyles: { halign: 'center', valign: 'middle', fillColor: [255, 255, 255], textColor: [0, 0, 0] },
+            alternateRowStyles: { fillColor: [255, 255, 255] },
+            columnStyles: { 1: { halign: 'left' } },
+            styles: { fontSize: 8 }
         });
-        doc.save(`Leaves_Report_${new Date().getTime()}.pdf`);
+        if (type === 'pdf') {
+            doc.save(`Leaves_Report_${new Date().getTime()}.pdf`);
+        } else {
+            doc.autoPrint();
+            const blob = doc.output('blob');
+            window.open(URL.createObjectURL(blob), '_blank');
+        }
     }
   };
 
@@ -323,7 +366,7 @@ export default function LeavesPage() {
                 <div className="w-[1px] h-6 bg-slate-100" />
                 <Button variant="ghost" size="sm" className="h-9 px-4 text-[11px] font-black text-slate-600 uppercase rounded-lg flex items-center gap-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all" onClick={() => handleExport('pdf')}><FileJson className="h-4 w-4 text-rose-600" /> PDF</Button>
                 <div className="w-[1px] h-6 bg-slate-100" />
-                <Button variant="ghost" size="sm" className="h-9 px-4 text-[11px] font-black text-slate-600 uppercase rounded-lg flex items-center gap-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all" onClick={() => window.print()}><Printer className="h-4 w-4 text-blue-600" /> Print</Button>
+                <Button variant="ghost" size="sm" className="h-9 px-4 text-[11px] font-black text-slate-600 uppercase rounded-lg flex items-center gap-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all" onClick={() => handleExport('print')}><Printer className="h-4 w-4 text-blue-600" /> Print</Button>
             </div>
         </div>
 

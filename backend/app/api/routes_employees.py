@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Response
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, text, case, cast, Integer, desc, asc
+from sqlalchemy import or_, text, case, cast, Integer, String, desc, asc
 from typing import List, Optional
 from app import models, schemas, crud
 from app.services import excel_sync
@@ -30,7 +30,7 @@ def get_filter_options(db: Session = Depends(get_db), current_user=Depends(Permi
         "religion": get_distinct(models.Employee.religion),
         "nationality": get_distinct(models.Employee.nationality),
         "blood_group": get_distinct(models.Employee.blood_group),
-        "bs": sorted(get_distinct(models.Employee.bs), key=lambda x: int(''.join(filter(str.isdigit, x))) if any(c.isdigit() for c in x) else 0),
+        "bs": sorted(get_distinct(models.Employee.bs), key=lambda x: int(x) if isinstance(x, (int, float)) else (int(''.join(filter(str.isdigit, str(x)))) if any(c.isdigit() for c in str(x)) else 0)),
         "cadre_type": get_distinct(models.Employee.cadre_type),
         "job_type": get_distinct(models.Employee.job_type),
         "direct_promotion": get_distinct(models.Employee.direct_promotion),
@@ -78,6 +78,7 @@ def get_employees(
     sort_by: Optional[str] = None,
     sort_order: Optional[str] = None,
     hr_pool_only: Optional[bool] = False,
+    employee_id: Optional[int] = None,
     skip: int = 0,
     limit: Optional[int] = 50,
     response: Response = None,
@@ -91,6 +92,9 @@ def get_employees(
         query = query.filter(is_hr_pool)
     else:
         query = query.filter(~is_hr_pool)
+
+    if employee_id is not None:
+        query = query.filter(models.Employee.id == employee_id)
 
     def apply_multi_filter(q, col, val):
         if not val or val.lower() == 'all': return q
@@ -109,14 +113,14 @@ def get_employees(
     query = apply_multi_filter(query, models.Employee.domicile, domicile)
 
     # Advanced Search
-    if search and search.strip():
+    if search and search.strip() and employee_id is None:
         search_filter = f"%{search.strip()}%"
         query = query.filter(or_(
             models.Employee.name.ilike(search_filter),
             models.Employee.branch_office.ilike(search_filter),
             models.Employee.post_name.ilike(search_filter),
             models.Employee.cnic.ilike(search_filter),
-            models.Employee.bs.ilike(search_filter),
+            cast(models.Employee.bs, String).ilike(search_filter),
             models.Employee.code.ilike(search_filter)
         ))
 
@@ -364,6 +368,7 @@ def export_employees_excel(
     post_status: Optional[str] = None,
     domicile: Optional[str] = None,
     hr_pool_only: Optional[bool] = False,
+    title: Optional[str] = "Personnel Registry Report",
     db: Session = Depends(get_db)
 ):
     query = db.query(models.Employee).filter((models.Employee.employment_status == 'Active') | (models.Employee.employment_status == None))
@@ -401,23 +406,88 @@ def export_employees_excel(
     query = query.order_by(models.Employee.s_no.asc(), models.Employee.bs.desc())
     employees = query.all()
 
+    def format_date(d):
+        if not d: return '---'
+        try:
+            return d.strftime('%d-%m-%Y')
+        except:
+            return str(d)
+
     data = []
     for i, emp in enumerate(employees):
         data.append({
             'S.No': i + 1,
-            'Name': emp.name,
-            'Designation': emp.post_name,
-            'BPS': emp.bs,
-            'Office': emp.branch_office,
-            'CNIC': emp.cnic,
-            'Domicile': emp.domicile,
-            'Status': emp.employment_status
+            'Name': emp.name or '',
+            'Designation': emp.post_name or '',
+            'BPS': emp.bs or '',
+            'Office/Branch': emp.branch_office or '',
+            'Domicile': emp.domicile or '',
+            'Appt. Date': format_date(emp.joining_date),
+            'Station DOJ': format_date(emp.place_of_posting),
+            'Duration': emp.tenure_current_station or '---'
         })
 
     df = pd.DataFrame(data)
     stream = io.BytesIO()
-    with pd.ExcelWriter(stream, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name='Employees')
+    
+    with pd.ExcelWriter(stream, engine='xlsxwriter') as writer:
+        # Start writing dataframe from row 2 (index 1) to leave room for the title
+        df.to_excel(writer, index=False, sheet_name='Employees', startrow=1)
+        
+        workbook  = writer.book
+        worksheet = writer.sheets['Employees']
+        
+        # Formats
+        title_format = workbook.add_format({
+            'bold': True, 'font_size': 14, 'align': 'center', 'valign': 'vcenter', 'border': 0
+        })
+        header_format = workbook.add_format({
+            'bold': True, 'align': 'center', 'valign': 'vcenter',
+            'fg_color': '#405189', 'font_color': 'white', 'border': 1
+        })
+        center_format = workbook.add_format({'align': 'center', 'valign': 'vcenter', 'border': 1})
+        left_format = workbook.add_format({'align': 'left', 'valign': 'vcenter', 'border': 1})
+        
+        # Write Title spanning across all 9 columns
+        worksheet.merge_range(0, 0, 0, len(df.columns) - 1, title, title_format)
+        worksheet.set_row(0, 30) # Make title row taller
+        
+        # Write custom headers with styling
+        for col_num, value in enumerate(df.columns.values):
+            worksheet.write(1, col_num, value, header_format)
+            
+        # Apply data formats and adjust column widths
+        for col_num, col_name in enumerate(df.columns.values):
+            # Calculate max width needed
+            max_len = max(
+                df[col_name].astype(str).map(len).max() if not df[col_name].empty else 0,
+                len(col_name)
+            ) + 2
+            
+            # Set minimum width
+            width = max(max_len, 10)
+            if col_name == 'Name': width = max(width, 25)
+            if col_name == 'Designation' or col_name == 'Office/Branch': width = max(width, 20)
+            
+            worksheet.set_column(col_num, col_num, width)
+            
+            # Apply format to the column data (row 3 onwards, which is index 2 in xlsxwriter)
+            for row_num in range(len(df)):
+                val = df.iloc[row_num, col_num]
+                # Name column gets left format, others get center
+                fmt = left_format if col_name == 'Name' else center_format
+                worksheet.write(row_num + 2, col_num, val if pd.notnull(val) else '', fmt)
+
+        # Print Page Setup
+        if len(df.columns) > 5:
+            worksheet.set_landscape()
+        else:
+            worksheet.set_portrait()
+            
+        worksheet.fit_to_pages(1, 0) # Fit to 1 page wide, auto tall
+        worksheet.set_margins(left=0.2, right=0.2, top=0.3, bottom=0.2)
+        worksheet.center_horizontally()
+
     stream.seek(0)
 
     headers = {
