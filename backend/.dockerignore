@@ -1,0 +1,5 @@
+__pycache__
+*.pyc
+.env
+hrms_v2.db
+.pytest_cache
