@@ -1404,21 +1404,21 @@ function EmployeesContent() {
                <div className="grid grid-cols-2 gap-4">
                  <div className="space-y-2">
                    <Label className="text-xs">New Designation</Label>
-                   <Select value={revertData.new_post_name} onValueChange={(val) => setRevertData({...revertData, new_post_name: val})}>
+                   <Select value={revertData.new_post_name} onValueChange={(val) => setRevertData({...revertData, new_post_name: val || ""})}>
                      <SelectTrigger className="border-slate-200/50 bg-slate-50"><SelectValue placeholder="Select Designation" /></SelectTrigger>
                      <SelectContent className="max-h-[200px]">{filterOptions?.post_name?.filter((p: any) => p).map((p: any) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
                    </Select>
                  </div>
                  <div className="space-y-2">
                    <Label className="text-xs">New Office/Branch</Label>
-                   <Select value={revertData.new_branch_office} onValueChange={(val) => setRevertData({...revertData, new_branch_office: val})}>
+                   <Select value={revertData.new_branch_office} onValueChange={(val) => setRevertData({...revertData, new_branch_office: val || ""})}>
                      <SelectTrigger className="border-slate-200/50 bg-slate-50"><SelectValue placeholder="Select Office" /></SelectTrigger>
                      <SelectContent className="max-h-[200px]">{filterOptions?.branch_office?.filter((b: any) => b).map((b: any) => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent>
                    </Select>
                  </div>
                  <div className="space-y-2">
                    <Label className="text-xs">New Region (Optional)</Label>
-                   <Select value={revertData.new_region} onValueChange={(val) => setRevertData({...revertData, new_region: val})}>
+                   <Select value={revertData.new_region} onValueChange={(val) => setRevertData({...revertData, new_region: val || ""})}>
                      <SelectTrigger className="border-slate-200/50 bg-slate-50"><SelectValue placeholder="Select Region" /></SelectTrigger>
                      <SelectContent className="max-h-[200px]">{filterOptions?.section_district?.filter((r: any) => r).map((r: any) => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
                    </Select>
