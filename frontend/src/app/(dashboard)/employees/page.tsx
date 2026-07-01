@@ -236,6 +236,10 @@ function LeaveHistorySection({ employeeId, employeeName, canEdit }: { employeeId
       queryClient.invalidateQueries({ queryKey: ['employee-leave-history', employeeId] });
       setFormData({ from_date: '', to_date: '', status: 'Under Process', remarks: '' });
       alert("Leave Application Registered Successfully!");
+    },
+    onError: (err: any) => {
+      console.error(err);
+      alert("Failed to save leave: " + (err.response?.data?.detail || err.message));
     }
   });
 
@@ -314,10 +318,10 @@ function LeaveHistorySection({ employeeId, employeeName, canEdit }: { employeeId
             <Table>
               <TableHeader className="bg-slate-50">
                 <TableRow className="h-10 border-none">
-                  <TableHead className="text-[9px] font-black uppercase text-white">Period</TableHead>
-                  <TableHead className="text-[9px] font-black uppercase text-white text-center">Days</TableHead>
-                  <TableHead className="text-[9px] font-black uppercase text-white text-center">Status</TableHead>
-                  <TableHead className="text-[9px] font-black uppercase text-white">Remarks</TableHead>
+                  <TableHead className="text-[9px] font-black uppercase text-slate-500">Period</TableHead>
+                  <TableHead className="text-[9px] font-black uppercase text-slate-500 text-center">Days</TableHead>
+                  <TableHead className="text-[9px] font-black uppercase text-slate-500 text-center">Status</TableHead>
+                  <TableHead className="text-[9px] font-black uppercase text-slate-500">Remarks</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

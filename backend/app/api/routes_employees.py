@@ -193,9 +193,9 @@ def get_officials_discrepancies(db: Session = Depends(get_db), current_user=Depe
         issues = []
         if not emp.domicile or emp.domicile.strip() == "" or "not match" in emp.domicile.lower():
             issues.append("Invalid/Missing Domicile")
-        if not emp.joining_date or emp.joining_date.strip() == "":
+        if not emp.joining_date or str(emp.joining_date).strip() == "":
             issues.append("Missing Appointment Date")
-        if not emp.place_of_posting or emp.place_of_posting.strip() == "":
+        if not emp.place_of_posting or str(emp.place_of_posting).strip() == "":
             issues.append("Missing Current Station Joining Date")
             
         if issues:

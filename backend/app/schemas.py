@@ -122,6 +122,7 @@ from pydantic import model_validator
 
 class Employee(EmployeeBase):
     id: int
+    leaves: List['LeaveRecord'] = []
     model_config = ConfigDict(from_attributes=True)
 
     @model_validator(mode='after')
@@ -375,3 +376,5 @@ class ExtraUpdate(ExtraBase):
 class ExtraResponse(ExtraBase):
     id: int
     model_config = ConfigDict(from_attributes=True)
+
+Employee.model_rebuild()

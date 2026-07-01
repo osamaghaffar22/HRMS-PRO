@@ -130,6 +130,10 @@ export default function LeavesPage() {
       queryClient.invalidateQueries({ queryKey: ['leaves-all'] });
       resetForm();
       alert(editingId ? "Successfully Updated!" : "Leave Application Saved!");
+    },
+    onError: (err: any) => {
+      console.error(err);
+      alert("Failed to save leave: " + (err.response?.data?.detail || err.message));
     }
   });
 
