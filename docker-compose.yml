@@ -6,9 +6,9 @@ services:
     container_name: hrms_postgres
     restart: always
     environment:
-      POSTGRES_USER: hrms_user
-      POSTGRES_PASSWORD: hrms_password
-      POSTGRES_DB: hrms_enterprise
+      - POSTGRES_USER=hrms_user
+      - POSTGRES_PASSWORD=hrms_password
+      - POSTGRES_DB=hrms_enterprise
     ports:
       - "5432:5432"
     volumes:
