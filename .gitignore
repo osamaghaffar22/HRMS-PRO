@@ -26,8 +26,6 @@ Thumbs.db
 # Project Specific
 Database.xlsx
 Details.docx
-*.png
-*.json
 
 # Custom Additions
 data/
