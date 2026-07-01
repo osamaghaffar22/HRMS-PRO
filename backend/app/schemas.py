@@ -211,7 +211,7 @@ class LeaveRecord(BaseModel):
     employee_id: int
     employee_name: Optional[str] = None
     employee_post: Optional[str] = None
-    employee_bs: Optional[str] = None
+    employee_bs: Optional[int] = None
     from_date: Optional[str] = None
     to_date: Optional[str] = None
     total_days: Optional[int] = None
@@ -310,7 +310,7 @@ class RationalizationBase(BaseModel):
     branch_office: str
     post_name: str
     s_no: Optional[str] = None
-    bs: Optional[str] = None
+    bs: Optional[int] = None
     allocated_posts: int
 
 class RationalizationCreate(RationalizationBase):
@@ -322,7 +322,7 @@ class RationalizationUpdate(BaseModel):
     branch_office: Optional[str] = None
     post_name: Optional[str] = None
     s_no: Optional[str] = None
-    bs: Optional[str] = None
+    bs: Optional[int] = None
     allocated_posts: Optional[int] = None
 
 class Rationalization(RationalizationBase):
@@ -335,7 +335,7 @@ class HRPoolBase(BaseModel):
     s_no: Optional[str] = None
     name: Optional[str] = None
     post_name: Optional[str] = None
-    bs: Optional[str] = None
+    bs: Optional[int] = None
     branch_office: Optional[str] = None
     domicile: Optional[str] = None
     joining_date: Optional[str] = None
@@ -359,7 +359,7 @@ class ExtraBase(BaseModel):
     s_no: Optional[str] = None
     name: Optional[str] = None
     post_name: Optional[str] = None
-    bs: Optional[str] = None
+    bs: Optional[int] = None
     branch_office: Optional[str] = None
     domicile: Optional[str] = None
     joining_date: Optional[str] = None
